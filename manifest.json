@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "LeetCode Picker",
+  "version": "0.1.0",
+  "description": "Pick a random LeetCode problem by difficulty, contest rating, topic, company and your solve status.",
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png"
+    }
+  },
+  "permissions": ["storage"],
+  "host_permissions": ["https://leetcode.com/*"]
+}
