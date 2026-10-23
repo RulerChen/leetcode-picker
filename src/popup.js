@@ -4,12 +4,13 @@ import { LC, getProblems, getRatings, getCompanies, getCompanyProblems, getSolve
 const RATING_LO = 1000;
 const RATING_HI = 3200;
 const BUCKET = 100;
+const LEVELS = ['Easy', 'Medium', 'Hard'];
 
 const DEFAULT_FILTERS = {
-  difficulty: ['Easy', 'Medium', 'Hard'],
+  mode: 'rating',
+  difficulty: LEVELS,
   ratingMin: 1500,
   ratingMax: null,
-  includeUnrated: false,
   tags: [],
   company: '',
   period: 'all',
@@ -28,18 +29,12 @@ const state = {
   tagNames: {},
   bySlug: new Map(),
   ratings: undefined,
+  companies: [],
   company: undefined,
   solved: undefined,
 };
 
 const loaded = (v) => (v === undefined || v instanceof Error ? null : v);
-
-// Green at the low end of the scale, amber in the middle, rose at the top.
-function ratingColor(r) {
-  const t = Math.min(1, Math.max(0, (r - RATING_LO) / (RATING_HI - RATING_LO)));
-  const hue = t < 0.5 ? 142 - 208 * t : 38 - 96 * (t - 0.5);
-  return `hsl(${(hue + 360) % 360} 72% 46%)`;
-}
 
 function blocker(value, what) {
   if (value === undefined) return `Loading ${what}…`;
@@ -50,14 +45,14 @@ function blocker(value, what) {
 function candidates(f = state.filters) {
   const block =
     blocker(state.problems, 'problem list') ||
-    blocker(state.ratings, 'ratings') ||
+    (f.mode === 'rating' && blocker(state.ratings, 'ratings')) ||
     (f.status !== 'any' &&
       (blocker(state.solved, 'solve status') ||
         (state.solved === null && 'Sign in to leetcode.com to filter by solve status.'))) ||
     (f.company && blocker(state.company, `${f.company} problems`));
   if (block) return { block };
   const list = filterProblems(state.problems, f, {
-    ratings: state.ratings,
+    ratings: loaded(state.ratings) ?? {},
     solved: loaded(state.solved) ?? {},
     company: f.company ? state.company : null,
   });
@@ -74,7 +69,7 @@ function renderRating() {
   form.elements.ratingMin.classList.toggle('top', lo > (RATING_LO + RATING_HI) / 2);
   $('ratingLabel').textContent = `${lo} – ${f.ratingMax == null ? `${RATING_HI}+` : hi}`;
 
-  const { list } = candidates({ ...f, ratingMin: null, ratingMax: null, includeUnrated: false });
+  const { list } = candidates({ ...f, ratingMin: null, ratingMax: null });
   const bars = $('hist').children;
   const counts = list ? histogram(list, state.ratings, RATING_LO, RATING_HI, BUCKET) : [];
   const peak = Math.max(1, ...counts);
@@ -87,8 +82,17 @@ function renderRating() {
   }
 }
 
+function renderLevels() {
+  const { list } = candidates({ ...state.filters, difficulty: LEVELS });
+  for (const level of LEVELS) {
+    const n = list?.filter((p) => p.difficulty === level).length;
+    form.querySelector(`b[data-level="${level}"]`).textContent = n ?? '…';
+  }
+}
+
 function render() {
-  renderRating();
+  if (state.filters.mode === 'rating') renderRating();
+  else renderLevels();
   const { block, list } = candidates();
   const count = $('count');
   if (block) {
@@ -114,10 +118,7 @@ function renderCurrent() {
   el.href = `${LC}/problems/${slug}/`;
   const badge = el.querySelector('.badge');
   badge.hidden = rating == null;
-  if (rating != null) {
-    badge.textContent = rating;
-    badge.style.background = ratingColor(rating);
-  }
+  badge.textContent = rating ?? '';
   el.querySelector('.title').textContent = p ? `${p.id}. ${p.title}` : slug;
   const meta = el.querySelector('.meta');
   meta.replaceChildren();
@@ -149,7 +150,23 @@ function buildTopics(tagNames) {
       label.append(input, name);
       return label;
     });
-  $('topicList').replaceChildren(...labels);
+  const empty = document.createElement('span');
+  empty.className = 'empty';
+  empty.textContent = 'No topics match';
+  empty.hidden = true;
+  $('topicList').replaceChildren(...labels, empty);
+  filterTopics();
+}
+
+function filterTopics() {
+  const q = $('topicSearch').value.trim().toLowerCase();
+  let shown = 0;
+  for (const label of $('topicList').querySelectorAll('label')) {
+    label.hidden = Boolean(q) && !label.textContent.toLowerCase().includes(q);
+    if (!label.hidden) shown++;
+  }
+  const empty = $('topicList').querySelector('.empty');
+  if (empty) empty.hidden = shown > 0;
 }
 
 function buildRatingScale() {
@@ -163,11 +180,7 @@ function buildRatingScale() {
   }
   $('ticks').replaceChildren(...ticks);
   const bars = [];
-  for (let from = RATING_LO; from < RATING_HI; from += BUCKET) {
-    const bar = document.createElement('span');
-    bar.style.setProperty('--c', ratingColor(from + BUCKET / 2));
-    bars.push(bar);
-  }
+  for (let from = RATING_LO; from < RATING_HI; from += BUCKET) bars.push(document.createElement('span'));
   $('hist').replaceChildren(...bars);
 }
 
@@ -176,10 +189,10 @@ function readForm() {
   const min = Number(fd.get('ratingMin'));
   const max = Number(fd.get('ratingMax'));
   return {
+    mode: fd.get('mode'),
     difficulty: fd.getAll('difficulty'),
     ratingMin: min <= RATING_LO ? null : min,
     ratingMax: max >= RATING_HI ? null : max,
-    includeUnrated: fd.has('includeUnrated'),
     tags: fd.getAll('tag'),
     company: fd.get('company').trim(),
     period: fd.get('period'),
@@ -193,10 +206,98 @@ function writeForm(f) {
     if (!el.name || el.name === 'tag') continue;
     if (el.name === 'ratingMin') el.value = f.ratingMin ?? RATING_LO;
     else if (el.name === 'ratingMax') el.value = f.ratingMax ?? RATING_HI;
+    else if (el.type === 'radio') el.checked = f[el.name] === el.value;
     else if (el.type === 'checkbox') {
       el.checked = el.name === 'difficulty' ? f.difficulty.includes(el.value) : Boolean(f[el.name]);
     } else el.value = f[el.name] ?? '';
   }
+}
+
+// Company combobox: filter as you type, arrows and Enter to choose, Escape to close.
+const companyInput = form.elements.company;
+const companyMenu = $('companyMenu');
+let companyActive = 0;
+
+function companyOption(name, q, i) {
+  const li = document.createElement('li');
+  li.id = `company-${i}`;
+  li.setAttribute('role', 'option');
+  li.dataset.value = name;
+  if (!name) {
+    li.className = 'any';
+    li.textContent = 'Any company';
+  } else if (q) {
+    const at = name.toLowerCase().indexOf(q);
+    const mark = document.createElement('mark');
+    mark.textContent = name.slice(at, at + q.length);
+    li.append(name.slice(0, at), mark, name.slice(at + q.length));
+  } else {
+    li.textContent = name;
+  }
+  return li;
+}
+
+function openCompanyMenu() {
+  const q = companyInput.value.trim().toLowerCase();
+  const names = state.companies.filter((n) => n.toLowerCase().includes(q));
+  const items = (q ? names : ['', ...names]).map((n, i) => companyOption(n, q, i));
+  if (!items.length) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = state.companies.length ? 'No company matches' : 'Company list unavailable';
+    items.push(li);
+  }
+  companyMenu.replaceChildren(...items);
+  companyMenu.hidden = false;
+  companyInput.setAttribute('aria-expanded', 'true');
+  setCompanyActive(0);
+}
+
+function closeCompanyMenu() {
+  companyMenu.hidden = true;
+  companyInput.setAttribute('aria-expanded', 'false');
+  companyInput.removeAttribute('aria-activedescendant');
+}
+
+function setCompanyActive(i) {
+  const options = companyMenu.querySelectorAll('[role=option]');
+  if (!options.length) return;
+  companyActive = (i + options.length) % options.length;
+  options.forEach((o, j) => o.setAttribute('aria-selected', String(j === companyActive)));
+  options[companyActive].scrollIntoView({ block: 'nearest' });
+  companyInput.setAttribute('aria-activedescendant', options[companyActive].id);
+}
+
+function chooseCompany(name) {
+  companyInput.value = name;
+  closeCompanyMenu();
+  companyInput.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function setupCompanyCombo() {
+  companyInput.addEventListener('focus', openCompanyMenu);
+  companyInput.addEventListener('input', openCompanyMenu);
+  companyInput.addEventListener('blur', closeCompanyMenu);
+  companyInput.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (companyMenu.hidden) openCompanyMenu();
+      else setCompanyActive(companyActive + (e.key === 'ArrowDown' ? 1 : -1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const option = companyMenu.hidden ? null : companyMenu.querySelectorAll('[role=option]')[companyActive];
+      if (option) chooseCompany(option.dataset.value);
+    } else if (e.key === 'Escape' && !companyMenu.hidden) {
+      e.preventDefault();
+      closeCompanyMenu();
+    }
+  });
+  // mousedown keeps focus in the input so blur does not close the menu first.
+  companyMenu.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    const option = e.target.closest('[role=option]');
+    if (option) chooseCompany(option.dataset.value);
+  });
 }
 
 let solvedLoad = null;
@@ -232,7 +333,7 @@ async function loadCompany() {
   }
   if (token !== companyToken) return;
   if (name && name !== company) {
-    form.elements.company.value = name;
+    companyInput.value = name;
     state.filters.company = name;
     saveFilters();
   }
@@ -313,8 +414,11 @@ async function init() {
   render();
   renderCurrent();
 
+  form.addEventListener('submit', (e) => e.preventDefault());
   form.addEventListener('input', onRatingInput);
   form.addEventListener('change', onChange);
+  setupCompanyCombo();
+  $('topicSearch').addEventListener('input', filterTopics);
   $('clearTopics').addEventListener('click', () => {
     for (const el of $('topicList').querySelectorAll('input')) el.checked = false;
     onChange();
@@ -329,7 +433,10 @@ async function init() {
 
   companiesLoad = getCompanies();
   companiesLoad.then(
-    (names) => $('companyList').replaceChildren(...names.map((n) => new Option(n))),
+    (names) => {
+      state.companies = names;
+      if (document.activeElement === companyInput) openCompanyMenu();
+    },
     () => {},
   );
 
