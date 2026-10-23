@@ -5,8 +5,17 @@ const RATING_LO = 1000;
 const RATING_HI = 3200;
 const BUCKET = 100;
 const LEVELS = ['Easy', 'Medium', 'Hard'];
-// Topics and companies with fewer problems than this are left out of the lists.
-const MIN_PROBLEMS = 10;
+// Common coding-interview topics; LeetCode's other tags are not listed.
+const TOPICS = new Set([
+  'array', 'string', 'hash-table', 'two-pointers', 'sliding-window', 'prefix-sum',
+  'stack', 'monotonic-stack', 'queue', 'linked-list', 'binary-search', 'sorting',
+  'tree', 'binary-tree', 'binary-search-tree', 'trie', 'heap-priority-queue',
+  'depth-first-search', 'breadth-first-search', 'graph', 'topological-sort', 'union-find', 'shortest-path',
+  'backtracking', 'dynamic-programming', 'greedy', 'divide-and-conquer',
+  'bit-manipulation', 'math', 'matrix', 'design',
+]);
+// Only the companies with the most problems are listed.
+const TOP_COMPANIES = 30;
 
 const DEFAULT_FILTERS = {
   mode: 'rating',
@@ -137,12 +146,10 @@ function renderTopicSummary() {
   $('topicSummary').textContent = tags.length ? tags.map((t) => state.tagNames[t] ?? t).join(', ') : 'Any';
 }
 
-function buildTopics(tagNames, problems) {
+function buildTopics(tagNames) {
   const selected = new Set(state.filters.tags);
-  const counts = {};
-  for (const p of problems) for (const t of p.tags) counts[t] = (counts[t] ?? 0) + 1;
   const labels = Object.entries(tagNames)
-    .filter(([slug]) => counts[slug] >= MIN_PROBLEMS || selected.has(slug))
+    .filter(([slug]) => TOPICS.has(slug) || selected.has(slug))
     .sort((a, b) => a[1].localeCompare(b[1]))
     .map(([slug, name]) => {
       const label = document.createElement('label');
@@ -495,7 +502,8 @@ async function init() {
   companiesLoad.then(
     (counts) => {
       state.companies = Object.keys(counts)
-        .filter((n) => counts[n] >= MIN_PROBLEMS)
+        .sort((a, b) => counts[b] - counts[a])
+        .slice(0, TOP_COMPANIES)
         .sort((a, b) => a.localeCompare(b));
       if (document.activeElement === companyInput) openCompanyMenu();
     },
@@ -508,7 +516,7 @@ async function init() {
         state.problems = problems;
         state.tagNames = tags;
         state.bySlug = new Map(problems.map((p) => [p.slug, p]));
-        buildTopics(tags, problems);
+        buildTopics(tags);
       },
       (e) => { state.problems = new Error(`Could not load the problem list (${e.message}).`); },
     )
