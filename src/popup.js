@@ -66,7 +66,6 @@ function renderRating() {
   const range = $('range');
   range.style.setProperty('--lo', (lo - RATING_LO) / (RATING_HI - RATING_LO));
   range.style.setProperty('--hi', (hi - RATING_LO) / (RATING_HI - RATING_LO));
-  form.elements.ratingMin.classList.toggle('top', lo > (RATING_LO + RATING_HI) / 2);
   $('ratingLabel').textContent = `${lo} – ${f.ratingMax == null ? `${RATING_HI}+` : hi}`;
 
   const { list } = candidates({ ...f, ratingMin: null, ratingMax: null });
@@ -355,6 +354,60 @@ function onChange() {
   render();
 }
 
+// Moves the nearest thumb; when both are equally near, the first movement's direction decides.
+function setupRangeDrag() {
+  const range = $('range');
+  const { ratingMin: min, ratingMax: max } = form.elements;
+  const step = Number(min.step);
+  let active = null;
+  let startX = 0;
+
+  const valueAt = (clientX) => {
+    const r = range.getBoundingClientRect();
+    const thumb = range.querySelector('.thumb').offsetWidth;
+    const t = Math.min(1, Math.max(0, (clientX - r.left - thumb / 2) / (r.width - thumb)));
+    return RATING_LO + Math.round((t * (RATING_HI - RATING_LO)) / step) * step;
+  };
+  const moveTo = (v) => {
+    active.value = active === min ? Math.min(v, Number(max.value)) : Math.max(v, Number(min.value));
+    active.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  const activate = (input) => {
+    active = input;
+    input.focus({ preventScroll: true });
+    range.querySelector(`[data-for="${input.name}"]`).classList.add('dragging');
+  };
+
+  range.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    range.setPointerCapture(e.pointerId);
+    startX = e.clientX;
+    const v = valueAt(e.clientX);
+    const dMin = Math.abs(v - Number(min.value));
+    const dMax = Math.abs(v - Number(max.value));
+    if (dMin !== dMax) {
+      activate(dMin < dMax ? min : max);
+      moveTo(v);
+    }
+  });
+  range.addEventListener('pointermove', (e) => {
+    if (!range.hasPointerCapture(e.pointerId)) return;
+    if (!active) {
+      if (e.clientX === startX) return;
+      activate(e.clientX < startX ? min : max);
+    }
+    moveTo(valueAt(e.clientX));
+  });
+  const end = () => {
+    if (!active) return;
+    range.querySelector('.dragging')?.classList.remove('dragging');
+    active.dispatchEvent(new Event('change', { bubbles: true }));
+    active = null;
+  };
+  range.addEventListener('pointerup', end);
+  range.addEventListener('pointercancel', end);
+}
+
 // Live feedback while dragging; the change event that follows saves the filters.
 function onRatingInput(e) {
   if (e.target.type !== 'range') return;
@@ -418,6 +471,7 @@ async function init() {
   form.addEventListener('input', onRatingInput);
   form.addEventListener('change', onChange);
   setupCompanyCombo();
+  setupRangeDrag();
   $('topicSearch').addEventListener('input', filterTopics);
   $('clearTopics').addEventListener('click', () => {
     for (const el of $('topicList').querySelectorAll('input')) el.checked = false;

@@ -124,7 +124,7 @@ button, input, select, summary { font: inherit; color: inherit; }
 }
 #hist span.in { background: var(--accent); }
 
-.range { position: relative; height: var(--thumb); }
+.range { position: relative; height: var(--thumb); cursor: pointer; touch-action: none; }
 .track {
   position: absolute;
   inset: calc(50% - 2px) 0 auto;
@@ -138,32 +138,25 @@ button, input, select, summary { font: inherit; color: inherit; }
   border-radius: 2px;
   background: var(--accent);
 }
-.range input {
+/* The inputs only carry keyboard and form state; pointer dragging is handled on .range in popup.js. */
+.range input { position: absolute; inset: 0; width: 100%; margin: 0; opacity: 0; pointer-events: none; }
+.thumb {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  background: none;
-  pointer-events: none;
-  appearance: none;
-}
-.range input.top { z-index: 1; }
-.range input::-webkit-slider-thumb {
+  top: 0;
+  left: calc(var(--at) * (100% - var(--thumb)));
   width: var(--thumb);
   height: var(--thumb);
   border: 2px solid var(--accent);
   border-radius: 50%;
   background: var(--bg);
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
-  cursor: grab;
-  pointer-events: auto;
-  appearance: none;
   transition: transform 120ms var(--ease-out);
 }
-.range input:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.12); }
-.range input:focus-visible { outline: none; }
-.range input:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--focus); outline-offset: 2px; }
+.thumb[data-for="ratingMin"] { --at: var(--lo); }
+.thumb[data-for="ratingMax"] { --at: var(--hi); }
+.thumb.dragging { transform: scale(1.12); cursor: grabbing; }
+.range:has([name=ratingMin]:focus-visible) [data-for="ratingMin"],
+.range:has([name=ratingMax]:focus-visible) [data-for="ratingMax"] { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 .ticks {
   position: relative;
@@ -436,5 +429,5 @@ details[open] summary.field { border-color: var(--accent); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #hist span, .level, .actions button, #current, .range input::-webkit-slider-thumb, select.field::picker-icon { transition: none; }
+  #hist span, .level, .actions button, #current, .thumb, select.field::picker-icon { transition: none; }
 }
