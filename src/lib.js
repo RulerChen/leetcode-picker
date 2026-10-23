@@ -42,6 +42,7 @@ export function filterProblems(problems, f, { ratings, solved, company }) {
       if (r == null || (f.ratingMin != null && r < f.ratingMin) || (f.ratingMax != null && r > f.ratingMax)) return false;
     }
     if (p.paid && !f.paid) return false;
+    if (f.minLikes && p.likes < f.minLikes) return false;
     if (tags.size && !p.tags.some((t) => tags.has(t))) return false;
     if (company && !company.has(p.slug)) return false;
     if (f.status !== 'any') {
@@ -62,8 +63,6 @@ export function histogram(problems, ratings, lo, hi, step) {
   return counts;
 }
 
-// Avoid handing back the problem the user is already looking at.
-export function pickRandom(list, currentSlug, random = Math.random) {
-  const pool = list.length > 1 ? list.filter((p) => p.slug !== currentSlug) : list;
-  return pool.length ? pool[Math.floor(random() * pool.length)] : null;
+export function pickRandom(list, random = Math.random) {
+  return list.length ? list[Math.floor(random() * list.length)] : null;
 }

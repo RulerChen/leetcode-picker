@@ -11,8 +11,8 @@
     <header class="top">
       <img src="../icons/48.png" alt="" width="22" height="22">
       <h1>LeetCode Picker</h1>
-      <div class="mode" role="radiogroup" aria-label="Search by">
-        <label><input type="radio" name="mode" value="rating">Rating</label>
+      <div class="seg mode" role="radiogroup" aria-label="Search by">
+        <label><input type="radio" name="mode" value="rating" checked>Rating</label>
         <label><input type="radio" name="mode" value="difficulty">Difficulty</label>
       </div>
     </header>
@@ -53,21 +53,21 @@
 
     <section class="more">
       <span class="label">Topics</span>
-      <details id="topics">
-        <summary id="topicSummary" class="field">Any</summary>
-        <div class="drop">
-          <input type="search" id="topicSearch" class="field" placeholder="Search topics" autocomplete="off" aria-label="Search topics">
+      <div class="topics">
+        <button type="button" id="topicSummary" class="field trigger" popovertarget="topicDrop">Any</button>
+        <div id="topicDrop" class="pop drop" popover>
+          <input type="search" id="topicSearch" class="field" placeholder="Search topics" autocomplete="off" aria-label="Search topics" autofocus>
           <div id="topicList"></div>
           <button type="button" id="clearTopics" class="link">Clear topics</button>
         </div>
-      </details>
+      </div>
 
       <span class="label">Company</span>
       <div class="controls">
         <div class="combo grow">
           <input name="company" class="field" placeholder="Any" autocomplete="off" spellcheck="false"
                  role="combobox" aria-label="Company" aria-expanded="false" aria-controls="companyMenu" aria-autocomplete="list">
-          <ul id="companyMenu" class="menu" role="listbox" hidden></ul>
+          <ul id="companyMenu" class="pop menu" role="listbox" popover="manual"></ul>
         </div>
         <select name="period" class="field" aria-label="Asked within">
           <option value="30d">30 days</option>
@@ -89,27 +89,20 @@
         </select>
         <label class="check"><input type="checkbox" name="paid"> Premium</label>
       </div>
+
+      <span class="label">Likes</span>
+      <div class="seg likes" role="radiogroup" aria-label="Minimum likes">
+        <label><input type="radio" name="minLikes" value="0" checked>Any</label>
+        <label><input type="radio" name="minLikes" value="1000">1k+</label>
+        <label><input type="radio" name="minLikes" value="3000">3k+</label>
+        <label><input type="radio" name="minLikes" value="5000">5k+</label>
+      </div>
     </section>
   </form>
 
   <footer class="bottom">
     <p id="count" role="status"></p>
-    <div class="actions">
-      <button type="button" id="pick" class="primary">Pick a problem</button>
-      <button type="button" id="prev" class="nav" aria-label="Previous problem">
-        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg>
-      </button>
-      <button type="button" id="next" class="nav" aria-label="Next problem">
-        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg>
-      </button>
-    </div>
-    <a id="current" hidden>
-      <span class="badge"></span>
-      <span class="body">
-        <span class="title"></span>
-        <span class="meta"></span>
-      </span>
-    </a>
+    <button type="button" id="pick" class="primary">Pick a problem</button>
   </footer>
 </body>
 </html>

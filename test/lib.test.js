@@ -72,13 +72,20 @@ test('filterProblems: solve status', () => {
   assert.deepEqual(run({ status: 'unsolved' }), ['b', 'c', 'e']);
 });
 
+test('filterProblems: minimum likes', () => {
+  const liked = problems.map((p, i) => ({ ...p, likes: [5000, 800, 1200, 20000, 0][i] }));
+  const slugs = (f) => filterProblems(liked, { ...base, ...f }, ctx).map((p) => p.slug);
+  assert.deepEqual(slugs({ minLikes: 1000 }), ['a', 'c']);
+  assert.deepEqual(slugs({ minLikes: 0 }), ['a', 'b', 'c', 'e']);
+});
+
 test('filterProblems: company set', () => {
   assert.deepEqual(run({}, { ...ctx, company: new Set(['c', 'd', 'zzz']) }), ['c']);
 });
 
-test('pickRandom skips the current problem unless it is the only one', () => {
+test('pickRandom picks uniformly and returns null for an empty list', () => {
   const list = [P('a'), P('b')];
-  assert.equal(pickRandom(list, 'a', () => 0).slug, 'b');
-  assert.equal(pickRandom([P('a')], 'a', () => 0.9).slug, 'a');
-  assert.equal(pickRandom([], 'a'), null);
+  assert.equal(pickRandom(list, () => 0).slug, 'a');
+  assert.equal(pickRandom(list, () => 0.99).slug, 'b');
+  assert.equal(pickRandom([]), null);
 });
