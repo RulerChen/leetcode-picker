@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>LeetCode Picker</title>
+  <link rel="stylesheet" href="popup.css">
+  <script type="module" src="popup.js"></script>
+</head>
+<body>
+  <form id="filters">
+    <span class="label">Difficulty</span>
+    <div class="controls">
+      <label><input type="checkbox" name="difficulty" value="Easy"> Easy</label>
+      <label><input type="checkbox" name="difficulty" value="Medium"> Medium</label>
+      <label><input type="checkbox" name="difficulty" value="Hard"> Hard</label>
+    </div>
+
+    <span class="label">Rating</span>
+    <div class="controls">
+      <input type="number" name="ratingMin" placeholder="min" min="0" step="100" aria-label="Minimum rating">
+      <span>~</span>
+      <input type="number" name="ratingMax" placeholder="max" min="0" step="100" aria-label="Maximum rating">
+      <label title="Only contest problems have a rating"><input type="checkbox" name="includeUnrated"> unrated</label>
+    </div>
+
+    <span class="label">Topics</span>
+    <details id="topics" class="controls">
+      <summary id="topicSummary">Any</summary>
+      <div id="topicList"></div>
+      <button type="button" id="clearTopics">Clear</button>
+    </details>
+
+    <span class="label">Company</span>
+    <div class="controls">
+      <input name="company" list="companyList" placeholder="Any" autocomplete="off" aria-label="Company">
+      <datalist id="companyList"></datalist>
+      <select name="period" aria-label="Asked within">
+        <option value="30d">30 days</option>
+        <option value="3m">3 months</option>
+        <option value="6m">6 months</option>
+        <option value="older">Older</option>
+        <option value="all">All time</option>
+      </select>
+    </div>
+
+    <span class="label">Status</span>
+    <div class="controls">
+      <select name="status" aria-label="Solve status">
+        <option value="any">Any</option>
+        <option value="todo">Not attempted</option>
+        <option value="notac">Attempted, not solved</option>
+        <option value="unsolved">Not solved</option>
+        <option value="ac">Solved</option>
+      </select>
+      <label><input type="checkbox" name="paid"> Premium</label>
+    </div>
+  </form>
+
+  <p id="count" role="status"></p>
+
+  <div class="actions">
+    <button type="button" id="pick" class="primary">Pick</button>
+    <button type="button" id="prev" aria-label="Previous problem">◀</button>
+    <button type="button" id="next" aria-label="Next problem">▶</button>
+  </div>
+
+  <a id="current" hidden>
+    <span class="title"></span>
+    <span class="meta"></span>
+  </a>
+</body>
+</html>
