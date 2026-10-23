@@ -1,11 +1,9 @@
 # LeetCode Picker
 
-Unofficial Chrome extension that opens a random LeetCode problem from the toolbar popup.
+Chrome extension that picks a random LeetCode problem.
 
-<p>
-  <img src="store/screenshot-1-rating.png" width="49%" alt="Pick by contest rating">
-  <img src="store/screenshot-2-company.png" width="49%" alt="Pick by difficulty and company">
-</p>
+<img src="store/screenshot-1-rating.png" alt="Pick by contest rating">
+<img src="store/screenshot-2-company.png" alt="Pick by difficulty and company">
 
 ## Features
 
@@ -21,6 +19,7 @@ Unofficial Chrome extension that opens a random LeetCode problem from the toolba
 
 ## Data
 
-Ratings from [zerotrac/leetcode_problem_rating](https://github.com/zerotrac/leetcode_problem_rating),
-companies from [liquidslr/leetcode-company-wise-problems](https://github.com/liquidslr/leetcode-company-wise-problems),
-everything else from leetcode.com.
+Ratings from [zerotrac/leetcode_problem_rating](https://github.com/zerotrac/leetcode_problem_rating)
+
+Companies from [liquidslr/leetcode-company-wise-problems](https://github.com/liquidslr/leetcode-company-wise-problems)
+
