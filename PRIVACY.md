@@ -11,6 +11,9 @@ The developer receives none of your data.
   `https://leetcode.com/api/problems/all/` with your existing leetcode.com sign-in.
   It keeps which problems you solved or attempted in `chrome.storage.local` for 5 minutes.
   It never reads or stores your cookies or password.
+- **LeetCode Premium status.** When the popup opens, it asks `https://leetcode.com/graphql` with the same sign-in
+  whether your account has Premium, so paid-only problems are listed only if you can open them.
+  It keeps the yes or no answer in `chrome.storage.local` for 5 minutes.
 - **The current tab's address.** When you pick a problem, the popup checks whether the active tab is on leetcode.com
   so it can open the problem there. The address is not stored.
 - **Your filter settings**, kept in `chrome.storage.local` so the popup reopens the way you left it.
@@ -19,7 +22,7 @@ All of this stays on your device. Removing the extension deletes it.
 
 ## Network requests
 
-Besides the solve status request above, the extension only downloads public data:
+Besides the solve status and Premium requests above, the extension only downloads public data:
 the problem list from leetcode.com (sent without cookies), problem ratings from zerotrac.github.io,
 and company lists from api.github.com and raw.githubusercontent.com.
 These services see your IP address and which file is requested, under their own privacy policies.

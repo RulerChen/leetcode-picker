@@ -1,25 +1,27 @@
 import { filterProblems, histogram, pickRandom } from './lib.js';
-import { LC, getProblems, getRatings, getCompanies, getCompanyProblems, getSolved } from './data.js';
+import { LC, getProblems, getRatings, getCompanies, getCompanyProblems, getSolved, getPremium } from './data.js';
 
 const RATING_LO = 1000;
 const RATING_HI = 3200;
 const BUCKET = 100;
 const LEVELS = ['Easy', 'Medium', 'Hard'];
-// Common coding-interview topics; LeetCode's other tags are not listed.
+// Coding-interview topics; contest-only tags such as network flow, suffix automaton or Sprague-Grundy are not listed.
 const TOPICS = new Set([
-  'array', 'string', 'hash-table', 'two-pointers', 'sliding-window', 'prefix-sum',
-  'stack', 'monotonic-stack', 'queue', 'linked-list', 'binary-search', 'sorting',
-  'tree', 'binary-tree', 'binary-search-tree', 'trie', 'heap-priority-queue',
-  'depth-first-search', 'breadth-first-search', 'graph', 'topological-sort', 'union-find', 'shortest-path',
-  'backtracking', 'dynamic-programming', 'greedy', 'divide-and-conquer',
-  'bit-manipulation', 'math', 'matrix', 'design',
+  'array', 'string', 'hash-table', 'hash-function', 'counting', 'two-pointers', 'sliding-window', 'prefix-sum',
+  'stack', 'monotonic-stack', 'queue', 'monotonic-queue', 'bracket-sequences', 'linked-list', 'doubly-linked-list',
+  'binary-search', 'sorting', 'merge-sort', 'quickselect', 'counting-sort', 'bucket-sort',
+  'tree', 'binary-tree', 'binary-search-tree', 'lowest-common-ancestor', 'trie', 'heap-priority-queue',
+  'ordered-set', 'segment-tree', 'binary-indexed-tree', 'iterator', 'data-stream', 'design',
+  'depth-first-search', 'breadth-first-search', 'graph', 'topological-sort', 'union-find', 'bipartite-graph',
+  'shortest-path', 'dijkstra', 'minimum-spanning-tree', 'eulerian-circuit',
+  'recursion', 'backtracking', 'memoization', 'dynamic-programming', 'knapsack-problem',
+  'longest-increasing-subsequence', 'longest-common-subsequence', 'dp-on-trees', 'bitmask',
+  'greedy', 'divide-and-conquer', 'sweep-line', 'simulation',
+  'string-matching', 'knuth-morris-pratt-algorithm', 'rolling-hash',
+  'floyds-cycle-finding-algorithm', 'boyer-moore-majority-vote-algorithm', 'randomized', 'reservoir-sampling',
+  'bit-manipulation', 'math', 'number-theory', 'combinatorics', 'geometry', 'probability-and-statistics',
+  'game-theory', 'brainteaser', 'matrix', 'interactive', 'concurrency', 'database',
 ]);
-// Large companies offered in the company menu; any other name in the dataset can still be typed.
-const COMPANIES = [
-  'Adobe', 'Airbnb', 'Amazon', 'AMD', 'Apple', 'Bloomberg', 'Cisco', 'Citadel', 'Databricks', 'DE Shaw',
-  'Goldman Sachs', 'Google', 'IBM', 'Intel', 'Jane Street', 'LinkedIn', 'Meta', 'Microsoft', 'Netflix', 'Nvidia',
-  'OpenAI', 'Oracle', 'PayPal', 'Qualcomm', 'Salesforce', 'Samsung', 'Snowflake', 'Tesla', 'TikTok', 'Uber',
-];
 
 const DEFAULT_FILTERS = {
   mode: 'rating',
@@ -27,10 +29,9 @@ const DEFAULT_FILTERS = {
   ratingMin: 1500,
   ratingMax: null,
   tags: [],
-  company: '',
+  companies: [],
   period: 'all',
   status: 'any',
-  paid: false,
   minLikes: 0,
 };
 
@@ -45,6 +46,7 @@ const state = {
   ratings: undefined,
   company: undefined,
   solved: undefined,
+  premium: false,
 };
 
 const loaded = (v) => (v === undefined || v instanceof Error ? null : v);
@@ -62,12 +64,12 @@ function candidates(f = state.filters) {
     (f.status !== 'any' &&
       (blocker(state.solved, 'solve status') ||
         (state.solved === null && 'Sign in to leetcode.com to filter by solve status.'))) ||
-    (f.company && blocker(state.company, `${f.company} problems`));
+    (f.companies.length && blocker(state.company, 'company problems'));
   if (block) return { block };
-  const list = filterProblems(state.problems, f, {
+  const list = filterProblems(state.problems, { ...f, paid: state.premium }, {
     ratings: loaded(state.ratings) ?? {},
     solved: loaded(state.solved) ?? {},
-    company: f.company ? state.company : null,
+    company: f.companies.length ? state.company : null,
   });
   return { list };
 }
@@ -118,43 +120,52 @@ function render() {
   $('pick').disabled = Boolean(block) || list.length === 0;
 }
 
-function renderTopicSummary() {
-  const tags = state.filters.tags;
+function renderSummaries() {
+  const { tags, companies } = state.filters;
   $('topicSummary').textContent = tags.length ? tags.map((t) => state.tagNames[t] ?? t).join(', ') : 'Any';
+  $('companySummary').textContent = companies.length ? companies.join(', ') : 'Any';
 }
 
-function buildTopics(tagNames) {
-  const selected = new Set(state.filters.tags);
-  const labels = Object.entries(tagNames)
-    .filter(([slug]) => TOPICS.has(slug) || selected.has(slug))
+// Selected values are always listed, so they survive a list that is loading, failed or dropped them.
+function buildChips(list, name, entries, selected, note) {
+  const labels = entries
     .sort((a, b) => a[1].localeCompare(b[1]))
-    .map(([slug, name]) => {
+    .map(([value, text]) => {
       const label = document.createElement('label');
       const input = document.createElement('input');
       input.type = 'checkbox';
-      input.name = 'tag';
-      input.value = slug;
-      input.checked = selected.has(slug);
-      label.append(input, name);
+      input.name = name;
+      input.value = value;
+      input.checked = selected.includes(value);
+      label.append(input, text);
       return label;
     });
   const empty = document.createElement('span');
   empty.className = 'empty';
-  empty.textContent = 'No topics match';
-  empty.hidden = true;
-  $('topicList').replaceChildren(...labels, empty);
-  filterTopics();
+  empty.textContent = note;
+  list.replaceChildren(...labels, empty);
+  filterChips(list);
 }
 
-function filterTopics() {
-  const q = $('topicSearch').value.trim().toLowerCase();
+function buildTopics(note = 'No topics match') {
+  const { tags } = state.filters;
+  const slugs = new Set([...Object.keys(state.tagNames).filter((s) => TOPICS.has(s)), ...tags]);
+  buildChips($('topicList'), 'tag', [...slugs].map((s) => [s, state.tagNames[s] ?? s]), tags, note);
+}
+
+function buildCompanies(names, note = 'No companies match') {
+  const { companies } = state.filters;
+  buildChips($('companyList'), 'company', [...new Set([...names, ...companies])].map((n) => [n, n]), companies, note);
+}
+
+function filterChips(list) {
+  const q = list.parentElement.querySelector('[type=search]').value.trim().toLowerCase();
   let shown = 0;
-  for (const label of $('topicList').querySelectorAll('label')) {
+  for (const label of list.querySelectorAll('label')) {
     label.hidden = Boolean(q) && !label.textContent.toLowerCase().includes(q);
     if (!label.hidden) shown++;
   }
-  const empty = $('topicList').querySelector('.empty');
-  if (empty) empty.hidden = shown > 0;
+  list.querySelector('.empty').hidden = shown > 0;
 }
 
 function buildRatingScale() {
@@ -182,112 +193,22 @@ function readForm() {
     ratingMin: min <= RATING_LO ? null : min,
     ratingMax: max >= RATING_HI ? null : max,
     tags: fd.getAll('tag'),
-    company: fd.get('company').trim(),
+    companies: fd.getAll('company'),
     period: fd.get('period'),
     status: fd.get('status'),
-    paid: fd.has('paid'),
     minLikes: Number(fd.get('minLikes')),
   };
 }
 
 function writeForm(f) {
   for (const el of form.elements) {
-    if (!el.name || el.name === 'tag') continue;
+    if (!el.name || el.name === 'tag' || el.name === 'company') continue;
     if (el.name === 'ratingMin') el.value = f.ratingMin ?? RATING_LO;
     else if (el.name === 'ratingMax') el.value = f.ratingMax ?? RATING_HI;
     else if (el.type === 'radio') el.checked = String(f[el.name]) === el.value;
-    else if (el.type === 'checkbox') {
-      el.checked = el.name === 'difficulty' ? f.difficulty.includes(el.value) : Boolean(f[el.name]);
-    } else el.value = f[el.name] ?? '';
+    else if (el.type === 'checkbox') el.checked = f.difficulty.includes(el.value);
+    else el.value = f[el.name] ?? '';
   }
-}
-
-// Company combobox: filter as you type, arrows and Enter to choose, Escape to close.
-const companyInput = form.elements.company;
-const companyMenu = $('companyMenu');
-const menuOpen = () => companyMenu.matches(':popover-open');
-let companyActive = 0;
-
-function companyOption(name, q, i) {
-  const li = document.createElement('li');
-  li.id = `company-${i}`;
-  li.setAttribute('role', 'option');
-  li.dataset.value = name;
-  if (!name) {
-    li.className = 'any';
-    li.textContent = 'Any company';
-  } else if (q) {
-    const at = name.toLowerCase().indexOf(q);
-    const mark = document.createElement('mark');
-    mark.textContent = name.slice(at, at + q.length);
-    li.append(name.slice(0, at), mark, name.slice(at + q.length));
-  } else {
-    li.textContent = name;
-  }
-  return li;
-}
-
-function openCompanyMenu() {
-  const q = companyInput.value.trim().toLowerCase();
-  const names = COMPANIES.filter((n) => n.toLowerCase().includes(q));
-  const items = (q ? names : ['', ...names]).map((n, i) => companyOption(n, q, i));
-  if (!items.length) {
-    const li = document.createElement('li');
-    li.className = 'empty';
-    li.textContent = 'No company matches';
-    items.push(li);
-  }
-  companyMenu.replaceChildren(...items);
-  if (!menuOpen()) companyMenu.showPopover();
-  companyInput.setAttribute('aria-expanded', 'true');
-  setCompanyActive(0);
-}
-
-function closeCompanyMenu() {
-  if (menuOpen()) companyMenu.hidePopover();
-  companyInput.setAttribute('aria-expanded', 'false');
-  companyInput.removeAttribute('aria-activedescendant');
-}
-
-function setCompanyActive(i) {
-  const options = companyMenu.querySelectorAll('[role=option]');
-  if (!options.length) return;
-  companyActive = (i + options.length) % options.length;
-  options.forEach((o, j) => o.setAttribute('aria-selected', String(j === companyActive)));
-  options[companyActive].scrollIntoView({ block: 'nearest' });
-  companyInput.setAttribute('aria-activedescendant', options[companyActive].id);
-}
-
-function chooseCompany(name) {
-  companyInput.value = name;
-  closeCompanyMenu();
-  companyInput.dispatchEvent(new Event('change', { bubbles: true }));
-}
-
-function setupCompanyCombo() {
-  companyInput.addEventListener('focus', openCompanyMenu);
-  companyInput.addEventListener('input', openCompanyMenu);
-  companyInput.addEventListener('blur', closeCompanyMenu);
-  companyInput.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (!menuOpen()) openCompanyMenu();
-      else setCompanyActive(companyActive + (e.key === 'ArrowDown' ? 1 : -1));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      const option = menuOpen() ? companyMenu.querySelectorAll('[role=option]')[companyActive] : null;
-      if (option) chooseCompany(option.dataset.value);
-    } else if (e.key === 'Escape' && menuOpen()) {
-      e.preventDefault();
-      closeCompanyMenu();
-    }
-  });
-  // mousedown keeps focus in the input so blur does not close the menu first.
-  companyMenu.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    const option = e.target.closest('[role=option]');
-    if (option) chooseCompany(option.dataset.value);
-  });
 }
 
 let solvedLoad = null;
@@ -303,29 +224,19 @@ function ensureSolved() {
 let companyToken = 0;
 async function loadCompany() {
   const token = ++companyToken;
-  const { company, period } = state.filters;
+  const { companies, period } = state.filters;
   state.company = undefined;
-  if (!company) return;
+  if (!companies.length) return;
   render();
-  const names = await getCompanies().catch(() => null);
-  // Without the company list we cannot canonicalize, so try the name as typed.
-  const name = names ? names.find((n) => n.toLowerCase() === company.toLowerCase()) : company;
   let result;
-  if (!name) {
-    result = new Error(`No company named "${company}" in the dataset.`);
-  } else {
-    try {
-      result = new Set(await getCompanyProblems(name, period));
-    } catch (e) {
-      result = new Error(`Could not load ${name} problems (${e.message}).`);
-    }
+  try {
+    const lists = await Promise.all(companies.map((c) =>
+      getCompanyProblems(c, period).catch((e) => { throw new Error(`Could not load ${c} problems (${e.message}).`); })));
+    result = new Set(lists.flat());
+  } catch (e) {
+    result = e;
   }
   if (token !== companyToken) return;
-  if (name && name !== company) {
-    companyInput.value = name;
-    state.filters.company = name;
-    saveFilters();
-  }
   state.company = result;
   render();
 }
@@ -339,12 +250,12 @@ function onChange() {
   state.filters = readForm();
   saveFilters();
   if (state.filters.status !== 'any') ensureSolved();
-  if (state.filters.company !== prev.company || state.filters.period !== prev.period) loadCompany();
+  if (String(state.filters.companies) !== String(prev.companies) || state.filters.period !== prev.period) loadCompany();
   if (state.filters.mode !== prev.mode) {
     const easing = getComputedStyle(form).getPropertyValue('--ease-out');
     form.querySelector(`.${state.filters.mode}-panel`).animate({ opacity: [0, 1] }, { duration: 200, easing });
   }
-  renderTopicSummary();
+  renderSummaries();
   render();
 }
 
@@ -434,19 +345,22 @@ async function init() {
   state.filters = { ...DEFAULT_FILTERS, ...filters };
   buildRatingScale();
   writeForm(state.filters);
-  renderTopicSummary();
+  buildTopics('Loading topics…');
+  buildCompanies([], 'Loading companies…');
+  renderSummaries();
   render();
 
   form.addEventListener('submit', (e) => e.preventDefault());
   form.addEventListener('input', onRatingInput);
   form.addEventListener('change', onChange);
-  setupCompanyCombo();
   setupRangeDrag();
-  $('topicSearch').addEventListener('input', filterTopics);
-  $('clearTopics').addEventListener('click', () => {
-    for (const el of $('topicList').querySelectorAll('input')) el.checked = false;
-    onChange();
-  });
+  for (const list of [$('topicList'), $('companyList')]) {
+    list.parentElement.querySelector('[type=search]').addEventListener('input', () => filterChips(list));
+    list.parentElement.querySelector('.link').addEventListener('click', () => {
+      for (const el of list.querySelectorAll('input')) el.checked = false;
+      onChange();
+    });
+  }
   $('pick').addEventListener('click', pick);
 
   getProblems()
@@ -454,11 +368,19 @@ async function init() {
       ({ problems, tags }) => {
         state.problems = problems;
         state.tagNames = tags;
-        buildTopics(tags);
+        buildTopics();
       },
-      (e) => { state.problems = new Error(`Could not load the problem list (${e.message}).`); },
+      (e) => {
+        state.problems = new Error(`Could not load the problem list (${e.message}).`);
+        buildTopics(state.problems.message);
+      },
     )
-    .then(() => { renderTopicSummary(); render(); });
+    .then(() => { renderSummaries(); render(); });
+
+  getCompanies().then(
+    (names) => buildCompanies(names),
+    (e) => buildCompanies([], `Could not load companies (${e.message}).`),
+  );
 
   getRatings()
     .then(
@@ -467,8 +389,11 @@ async function init() {
     )
     .then(() => { render(); });
 
+  // Paid-only problems are listed only for a Premium account; a failed check counts as no Premium.
+  getPremium().then((v) => { state.premium = v; render(); }, () => {});
+
   if (state.filters.status !== 'any') ensureSolved();
-  if (state.filters.company) loadCompany();
+  if (state.filters.companies.length) loadCompany();
 }
 
 init();

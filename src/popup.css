@@ -242,9 +242,6 @@ button, input, select, summary { font: inherit; color: inherit; }
 .field::placeholder { color: var(--muted); }
 input.field { width: 100%; }
 
-.check { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; cursor: pointer; white-space: nowrap; }
-.check input { margin: 0; accent-color: var(--accent); }
-
 /* Native selects, styled with customizable select */
 select.field, ::picker(select) { appearance: base-select; }
 select.field { display: flex; align-items: center; gap: 6px; cursor: pointer; }
@@ -300,29 +297,11 @@ option::checkmark { order: 1; margin-left: auto; color: var(--accent); }
   .pop:popover-open { opacity: 0; transform: scale(0.95); }
 }
 
-.combo input { anchor-name: --company; }
-.menu {
-  position-anchor: --company;
-  top: calc(anchor(bottom) + 4px);
-  max-height: 172px;
-  padding: 4px;
-  overflow-y: auto;
-  list-style: none;
-}
-.menu li {
-  padding: 6px 8px;
-  border-radius: 6px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-}
-.menu li[aria-selected="true"] { background: var(--hover); }
-.menu li.any { color: var(--muted); }
-.menu li.empty { color: var(--muted); cursor: default; }
-.menu mark { background: none; color: var(--accent); font-weight: 600; }
-
-/* Topics: a select-looking button that opens a popover below it */
+/* Topics and companies: a select-looking button that opens a popover as wide as its row */
+.topics { anchor-name: --topics; }
+.companies { anchor-name: --companies; }
+#topicDrop { position-anchor: --topics; }
+#companyDrop { position-anchor: --companies; }
 .trigger {
   position: relative;
   display: block;
@@ -333,7 +312,6 @@ option::checkmark { order: 1; margin-left: auto; color: var(--accent); }
   white-space: nowrap;
   text-overflow: ellipsis;
   cursor: pointer;
-  anchor-name: --topics;
 }
 .trigger::after {
   content: "";
@@ -345,22 +323,21 @@ option::checkmark { order: 1; margin-left: auto; color: var(--accent); }
   background: var(--chevron) no-repeat center / 14px;
   transition: rotate 150ms var(--ease-out);
 }
-.topics:has(:popover-open) .trigger { border-color: var(--accent); }
-.topics:has(:popover-open) .trigger::after { rotate: 180deg; }
+.picker:has(:popover-open) .trigger { border-color: var(--accent); }
+.picker:has(:popover-open) .trigger::after { rotate: 180deg; }
 .drop {
-  position-anchor: --topics;
   top: calc(anchor(bottom) + 6px);
   padding: 8px;
 }
-#topicList {
+.chips {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  max-height: 128px;
+  max-height: 104px;
   overflow-y: auto;
   margin: 8px 0 6px;
 }
-#topicList label {
+.chips label {
   position: relative;
   padding: 2px 9px;
   border: 1px solid var(--border);
@@ -370,12 +347,12 @@ option::checkmark { order: 1; margin-left: auto; color: var(--accent); }
   user-select: none;
   transition: transform 160ms var(--ease-out), background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
-#topicList label:active { transform: scale(0.97); }
-#topicList label[hidden] { display: none; }
-#topicList input { position: absolute; opacity: 0; pointer-events: none; }
-#topicList label:has(:checked) { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
-#topicList label:has(:focus-visible) { outline: 2px solid var(--focus); outline-offset: 1px; }
-#topicList .empty { color: var(--muted); font-size: 12px; }
+.chips label:active { transform: scale(0.97); }
+.chips label[hidden] { display: none; }
+.chips input { position: absolute; opacity: 0; pointer-events: none; }
+.chips label:has(:checked) { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.chips label:has(:focus-visible) { outline: 2px solid var(--focus); outline-offset: 1px; }
+.chips .empty { color: var(--muted); font-size: 12px; }
 
 .link {
   padding: 0;
@@ -412,15 +389,14 @@ option::checkmark { order: 1; margin-left: auto; color: var(--accent); }
 @media (hover: hover) and (pointer: fine) {
   .seg label:hover:not(:has(:checked)) { color: var(--fg); }
   .level:hover { border-color: color-mix(in srgb, var(--d) 55%, transparent); }
-  #topicList label:hover:not(:has(:checked)) { border-color: var(--muted); }
-  .menu li:not(.empty):hover { background: var(--hover); }
+  .chips label:hover:not(:has(:checked)) { border-color: var(--muted); }
   .field:hover { border-color: color-mix(in srgb, var(--muted) 50%, var(--border)); }
   .primary:hover:not(:disabled) { opacity: 0.9; }
 }
 
 /* Reduced motion keeps fades and color changes, drops movement and scaling. */
 @media (prefers-reduced-motion: reduce) {
-  #hist span, .level, .primary, .thumb, .seg::before, #topicList label, select.field::picker-icon, .trigger::after { transition: none; }
+  #hist span, .level, .primary, .thumb, .seg::before, .chips label, select.field::picker-icon, .trigger::after { transition: none; }
   .pop:not(:popover-open) { transform: none; }
   @starting-style {
     .pop:popover-open { transform: none; }
