@@ -88,19 +88,14 @@ async function loadRatings() {
   return Object.fromEntries(rows.map((r) => [r.TitleSlug, Math.round(r.Rating)]));
 }
 
-// Company name to estimated problem count, from the size of its "5. All.csv" at about 165 bytes per row.
 async function loadCompanies() {
-  const url = `https://api.github.com/repos/${COMPANY_REPO}/git/trees/main?recursive=1`;
-  const { tree } = await (await fetchOk(url)).json();
-  const suffix = `/${PERIODS.all}.csv`;
-  return Object.fromEntries(tree
-    .filter((e) => e.path.endsWith(suffix))
-    .map((e) => [e.path.slice(0, -suffix.length), Math.round(e.size / 165)]));
+  const entries = await (await fetchOk(`https://api.github.com/repos/${COMPANY_REPO}/contents/`)).json();
+  return entries.filter((e) => e.type === 'dir').map((e) => e.name);
 }
 
 export const getProblems = () => cached('problems', DAY, loadProblems);
 export const getRatings = () => cached('ratings', DAY, loadRatings);
-export const getCompanies = () => cached('companyCounts', DAY, loadCompanies);
+export const getCompanies = () => cached('companies', DAY, loadCompanies);
 
 export function getCompanyProblems(company, period) {
   const file = `${encodeURIComponent(company)}/${encodeURIComponent(`${PERIODS[period]}.csv`)}`;

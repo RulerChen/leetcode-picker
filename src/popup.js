@@ -14,8 +14,12 @@ const TOPICS = new Set([
   'backtracking', 'dynamic-programming', 'greedy', 'divide-and-conquer',
   'bit-manipulation', 'math', 'matrix', 'design',
 ]);
-// Only the companies with the most problems are listed.
-const TOP_COMPANIES = 30;
+// Large companies offered in the company menu; any other name in the dataset can still be typed.
+const COMPANIES = [
+  'Adobe', 'Airbnb', 'Amazon', 'AMD', 'Apple', 'Bloomberg', 'Cisco', 'Citadel', 'Databricks', 'DE Shaw',
+  'Goldman Sachs', 'Google', 'IBM', 'Intel', 'Jane Street', 'LinkedIn', 'Meta', 'Microsoft', 'Netflix', 'Nvidia',
+  'OpenAI', 'Oracle', 'PayPal', 'Qualcomm', 'Salesforce', 'Samsung', 'Snowflake', 'Tesla', 'TikTok', 'Uber',
+];
 
 const DEFAULT_FILTERS = {
   mode: 'rating',
@@ -40,7 +44,6 @@ const state = {
   tagNames: {},
   bySlug: new Map(),
   ratings: undefined,
-  companies: [],
   company: undefined,
   solved: undefined,
 };
@@ -250,12 +253,12 @@ function companyOption(name, q, i) {
 
 function openCompanyMenu() {
   const q = companyInput.value.trim().toLowerCase();
-  const names = state.companies.filter((n) => n.toLowerCase().includes(q));
+  const names = COMPANIES.filter((n) => n.toLowerCase().includes(q));
   const items = (q ? names : ['', ...names]).map((n, i) => companyOption(n, q, i));
   if (!items.length) {
     const li = document.createElement('li');
     li.className = 'empty';
-    li.textContent = state.companies.length ? 'No company matches' : 'Company list unavailable';
+    li.textContent = 'No company matches';
     items.push(li);
   }
   companyMenu.replaceChildren(...items);
@@ -321,7 +324,6 @@ function ensureSolved() {
     .then(() => { render(); });
 }
 
-let companiesLoad = null;
 let companyToken = 0;
 async function loadCompany() {
   const token = ++companyToken;
@@ -329,9 +331,9 @@ async function loadCompany() {
   state.company = undefined;
   if (!company) return;
   render();
-  const counts = await companiesLoad.catch(() => null);
+  const names = await getCompanies().catch(() => null);
   // Without the company list we cannot canonicalize, so try the name as typed.
-  const name = counts ? Object.keys(counts).find((n) => n.toLowerCase() === company.toLowerCase()) : company;
+  const name = names ? names.find((n) => n.toLowerCase() === company.toLowerCase()) : company;
   let result;
   if (!name) {
     result = new Error(`No company named "${company}" in the dataset.`);
@@ -497,18 +499,6 @@ async function init() {
     e.preventDefault();
     openProblem(state.history.list[state.history.index]);
   });
-
-  companiesLoad = getCompanies();
-  companiesLoad.then(
-    (counts) => {
-      state.companies = Object.keys(counts)
-        .sort((a, b) => counts[b] - counts[a])
-        .slice(0, TOP_COMPANIES)
-        .sort((a, b) => a.localeCompare(b));
-      if (document.activeElement === companyInput) openCompanyMenu();
-    },
-    () => {},
-  );
 
   getProblems()
     .then(
