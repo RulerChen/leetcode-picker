@@ -5,6 +5,8 @@ const RATING_LO = 1000;
 const RATING_HI = 3200;
 const BUCKET = 100;
 const LEVELS = ['Easy', 'Medium', 'Hard'];
+// Topics and companies with fewer problems than this are left out of the lists.
+const MIN_PROBLEMS = 10;
 
 const DEFAULT_FILTERS = {
   mode: 'rating',
@@ -135,9 +137,12 @@ function renderTopicSummary() {
   $('topicSummary').textContent = tags.length ? tags.map((t) => state.tagNames[t] ?? t).join(', ') : 'Any';
 }
 
-function buildTopics(tagNames) {
+function buildTopics(tagNames, problems) {
   const selected = new Set(state.filters.tags);
+  const counts = {};
+  for (const p of problems) for (const t of p.tags) counts[t] = (counts[t] ?? 0) + 1;
   const labels = Object.entries(tagNames)
+    .filter(([slug]) => counts[slug] >= MIN_PROBLEMS || selected.has(slug))
     .sort((a, b) => a[1].localeCompare(b[1]))
     .map(([slug, name]) => {
       const label = document.createElement('label');
@@ -317,9 +322,9 @@ async function loadCompany() {
   state.company = undefined;
   if (!company) return;
   render();
-  const names = await companiesLoad.catch(() => null);
+  const counts = await companiesLoad.catch(() => null);
   // Without the company list we cannot canonicalize, so try the name as typed.
-  const name = names ? names.find((n) => n.toLowerCase() === company.toLowerCase()) : company;
+  const name = counts ? Object.keys(counts).find((n) => n.toLowerCase() === company.toLowerCase()) : company;
   let result;
   if (!name) {
     result = new Error(`No company named "${company}" in the dataset.`);
@@ -488,8 +493,10 @@ async function init() {
 
   companiesLoad = getCompanies();
   companiesLoad.then(
-    (names) => {
-      state.companies = names;
+    (counts) => {
+      state.companies = Object.keys(counts)
+        .filter((n) => counts[n] >= MIN_PROBLEMS)
+        .sort((a, b) => a.localeCompare(b));
       if (document.activeElement === companyInput) openCompanyMenu();
     },
     () => {},
@@ -501,7 +508,7 @@ async function init() {
         state.problems = problems;
         state.tagNames = tags;
         state.bySlug = new Map(problems.map((p) => [p.slug, p]));
-        buildTopics(tags);
+        buildTopics(tags, problems);
       },
       (e) => { state.problems = new Error(`Could not load the problem list (${e.message}).`); },
     )
