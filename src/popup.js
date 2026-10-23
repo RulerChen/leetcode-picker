@@ -5,8 +5,21 @@ const RATING_LO = 1000;
 const RATING_HI = 3200;
 const BUCKET = 100;
 const LEVELS = ['Easy', 'Medium', 'Hard'];
-// Topics and companies with fewer problems than this are left out of the lists.
-const MIN_PROBLEMS = 10;
+// Common coding-interview topics; LeetCode's other tags are not listed.
+const TOPICS = new Set([
+  'array', 'string', 'hash-table', 'two-pointers', 'sliding-window', 'prefix-sum',
+  'stack', 'monotonic-stack', 'queue', 'linked-list', 'binary-search', 'sorting',
+  'tree', 'binary-tree', 'binary-search-tree', 'trie', 'heap-priority-queue',
+  'depth-first-search', 'breadth-first-search', 'graph', 'topological-sort', 'union-find', 'shortest-path',
+  'backtracking', 'dynamic-programming', 'greedy', 'divide-and-conquer',
+  'bit-manipulation', 'math', 'matrix', 'design',
+]);
+// Large companies offered in the company menu; any other name in the dataset can still be typed.
+const COMPANIES = [
+  'Adobe', 'Airbnb', 'Amazon', 'AMD', 'Apple', 'Bloomberg', 'Cisco', 'Citadel', 'Databricks', 'DE Shaw',
+  'Goldman Sachs', 'Google', 'IBM', 'Intel', 'Jane Street', 'LinkedIn', 'Meta', 'Microsoft', 'Netflix', 'Nvidia',
+  'OpenAI', 'Oracle', 'PayPal', 'Qualcomm', 'Salesforce', 'Samsung', 'Snowflake', 'Tesla', 'TikTok', 'Uber',
+];
 
 const DEFAULT_FILTERS = {
   mode: 'rating',
@@ -31,7 +44,6 @@ const state = {
   tagNames: {},
   bySlug: new Map(),
   ratings: undefined,
-  companies: [],
   company: undefined,
   solved: undefined,
 };
@@ -137,12 +149,10 @@ function renderTopicSummary() {
   $('topicSummary').textContent = tags.length ? tags.map((t) => state.tagNames[t] ?? t).join(', ') : 'Any';
 }
 
-function buildTopics(tagNames, problems) {
+function buildTopics(tagNames) {
   const selected = new Set(state.filters.tags);
-  const counts = {};
-  for (const p of problems) for (const t of p.tags) counts[t] = (counts[t] ?? 0) + 1;
   const labels = Object.entries(tagNames)
-    .filter(([slug]) => counts[slug] >= MIN_PROBLEMS || selected.has(slug))
+    .filter(([slug]) => TOPICS.has(slug) || selected.has(slug))
     .sort((a, b) => a[1].localeCompare(b[1]))
     .map(([slug, name]) => {
       const label = document.createElement('label');
@@ -243,12 +253,12 @@ function companyOption(name, q, i) {
 
 function openCompanyMenu() {
   const q = companyInput.value.trim().toLowerCase();
-  const names = state.companies.filter((n) => n.toLowerCase().includes(q));
+  const names = COMPANIES.filter((n) => n.toLowerCase().includes(q));
   const items = (q ? names : ['', ...names]).map((n, i) => companyOption(n, q, i));
   if (!items.length) {
     const li = document.createElement('li');
     li.className = 'empty';
-    li.textContent = state.companies.length ? 'No company matches' : 'Company list unavailable';
+    li.textContent = 'No company matches';
     items.push(li);
   }
   companyMenu.replaceChildren(...items);
@@ -314,7 +324,6 @@ function ensureSolved() {
     .then(() => { render(); });
 }
 
-let companiesLoad = null;
 let companyToken = 0;
 async function loadCompany() {
   const token = ++companyToken;
@@ -322,9 +331,9 @@ async function loadCompany() {
   state.company = undefined;
   if (!company) return;
   render();
-  const counts = await companiesLoad.catch(() => null);
+  const names = await getCompanies().catch(() => null);
   // Without the company list we cannot canonicalize, so try the name as typed.
-  const name = counts ? Object.keys(counts).find((n) => n.toLowerCase() === company.toLowerCase()) : company;
+  const name = names ? names.find((n) => n.toLowerCase() === company.toLowerCase()) : company;
   let result;
   if (!name) {
     result = new Error(`No company named "${company}" in the dataset.`);
@@ -491,24 +500,13 @@ async function init() {
     openProblem(state.history.list[state.history.index]);
   });
 
-  companiesLoad = getCompanies();
-  companiesLoad.then(
-    (counts) => {
-      state.companies = Object.keys(counts)
-        .filter((n) => counts[n] >= MIN_PROBLEMS)
-        .sort((a, b) => a.localeCompare(b));
-      if (document.activeElement === companyInput) openCompanyMenu();
-    },
-    () => {},
-  );
-
   getProblems()
     .then(
       ({ problems, tags }) => {
         state.problems = problems;
         state.tagNames = tags;
         state.bySlug = new Map(problems.map((p) => [p.slug, p]));
-        buildTopics(tags, problems);
+        buildTopics(tags);
       },
       (e) => { state.problems = new Error(`Could not load the problem list (${e.message}).`); },
     )
