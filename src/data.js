@@ -38,7 +38,7 @@ async function fetchOk(url, init) {
 // questionList caps every call at 100 rows, so page with aliases, 10 pages per request.
 const PAGE = 100;
 const PAGES_PER_REQUEST = 10;
-const FIELDS = 'total:totalNum questions:data{id:questionFrontendId title slug:titleSlug difficulty paid:isPaidOnly topicTags{name slug}}';
+const FIELDS = 'total:totalNum questions:data{slug:titleSlug difficulty paid:isPaidOnly likes topicTags{name slug}}';
 
 async function graphql(query) {
   // The problem list is public; omit cookies so the request stays anonymous.
@@ -72,11 +72,10 @@ async function loadProblems() {
     .map((q) => {
       for (const t of q.topicTags) tags[t.slug] = t.name;
       return {
-        id: Number(q.id),
-        title: q.title,
         slug: q.slug,
         difficulty: q.difficulty,
         paid: q.paid,
+        likes: q.likes,
         tags: q.topicTags.map((t) => t.slug),
       };
     });
@@ -93,7 +92,7 @@ async function loadCompanies() {
   return entries.filter((e) => e.type === 'dir').map((e) => e.name);
 }
 
-export const getProblems = () => cached('problems', DAY, loadProblems);
+export const getProblems = () => cached('problems:v2', DAY, loadProblems);
 export const getRatings = () => cached('ratings', DAY, loadRatings);
 export const getCompanies = () => cached('companies', DAY, loadCompanies);
 

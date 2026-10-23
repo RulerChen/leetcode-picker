@@ -31,6 +31,7 @@ const DEFAULT_FILTERS = {
   period: 'all',
   status: 'any',
   paid: false,
+  minLikes: 0,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -39,10 +40,8 @@ const form = $('filters');
 // Data fields: undefined while loading, Error if it failed, else the data; solved is null when signed out.
 const state = {
   filters: DEFAULT_FILTERS,
-  history: { list: [], index: -1 },
   problems: undefined,
   tagNames: {},
-  bySlug: new Map(),
   ratings: undefined,
   company: undefined,
   solved: undefined,
@@ -108,6 +107,7 @@ function render() {
   else renderLevels();
   const { block, list } = candidates();
   const count = $('count');
+  count.title = block ?? '';
   if (block) {
     count.textContent = block;
   } else {
@@ -116,32 +116,6 @@ function render() {
     count.replaceChildren(n, ` problem${list.length === 1 ? '' : 's'} match`);
   }
   $('pick').disabled = Boolean(block) || list.length === 0;
-}
-
-function renderCurrent() {
-  const h = state.history;
-  const slug = h.list[h.index];
-  $('prev').disabled = h.index <= 0;
-  $('next').disabled = h.index >= h.list.length - 1;
-  const el = $('current');
-  el.hidden = !slug;
-  if (!slug) return;
-  const p = state.bySlug.get(slug);
-  const rating = loaded(state.ratings)?.[slug];
-  el.href = `${LC}/problems/${slug}/`;
-  const badge = el.querySelector('.badge');
-  badge.hidden = rating == null || state.filters.mode !== 'rating';
-  badge.textContent = rating ?? '';
-  el.querySelector('.title').textContent = p ? `${p.id}. ${p.title}` : slug;
-  const meta = el.querySelector('.meta');
-  meta.replaceChildren();
-  if (p) {
-    const d = document.createElement('span');
-    d.className = p.difficulty;
-    d.textContent = p.difficulty;
-    meta.append(d, ' · ');
-  }
-  meta.append(`${h.index + 1} / ${h.list.length}`);
 }
 
 function renderTopicSummary() {
@@ -212,6 +186,7 @@ function readForm() {
     period: fd.get('period'),
     status: fd.get('status'),
     paid: fd.has('paid'),
+    minLikes: Number(fd.get('minLikes')),
   };
 }
 
@@ -220,7 +195,7 @@ function writeForm(f) {
     if (!el.name || el.name === 'tag') continue;
     if (el.name === 'ratingMin') el.value = f.ratingMin ?? RATING_LO;
     else if (el.name === 'ratingMax') el.value = f.ratingMax ?? RATING_HI;
-    else if (el.type === 'radio') el.checked = f[el.name] === el.value;
+    else if (el.type === 'radio') el.checked = String(f[el.name]) === el.value;
     else if (el.type === 'checkbox') {
       el.checked = el.name === 'difficulty' ? f.difficulty.includes(el.value) : Boolean(f[el.name]);
     } else el.value = f[el.name] ?? '';
@@ -230,6 +205,7 @@ function writeForm(f) {
 // Company combobox: filter as you type, arrows and Enter to choose, Escape to close.
 const companyInput = form.elements.company;
 const companyMenu = $('companyMenu');
+const menuOpen = () => companyMenu.matches(':popover-open');
 let companyActive = 0;
 
 function companyOption(name, q, i) {
@@ -262,13 +238,13 @@ function openCompanyMenu() {
     items.push(li);
   }
   companyMenu.replaceChildren(...items);
-  companyMenu.hidden = false;
+  if (!menuOpen()) companyMenu.showPopover();
   companyInput.setAttribute('aria-expanded', 'true');
   setCompanyActive(0);
 }
 
 function closeCompanyMenu() {
-  companyMenu.hidden = true;
+  if (menuOpen()) companyMenu.hidePopover();
   companyInput.setAttribute('aria-expanded', 'false');
   companyInput.removeAttribute('aria-activedescendant');
 }
@@ -295,13 +271,13 @@ function setupCompanyCombo() {
   companyInput.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      if (companyMenu.hidden) openCompanyMenu();
+      if (!menuOpen()) openCompanyMenu();
       else setCompanyActive(companyActive + (e.key === 'ArrowDown' ? 1 : -1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      const option = companyMenu.hidden ? null : companyMenu.querySelectorAll('[role=option]')[companyActive];
+      const option = menuOpen() ? companyMenu.querySelectorAll('[role=option]')[companyActive] : null;
       if (option) chooseCompany(option.dataset.value);
-    } else if (e.key === 'Escape' && !companyMenu.hidden) {
+    } else if (e.key === 'Escape' && menuOpen()) {
       e.preventDefault();
       closeCompanyMenu();
     }
@@ -364,9 +340,12 @@ function onChange() {
   saveFilters();
   if (state.filters.status !== 'any') ensureSolved();
   if (state.filters.company !== prev.company || state.filters.period !== prev.period) loadCompany();
+  if (state.filters.mode !== prev.mode) {
+    const easing = getComputedStyle(form).getPropertyValue('--ease-out');
+    form.querySelector(`.${state.filters.mode}-panel`).animate({ opacity: [0, 1] }, { duration: 200, easing });
+  }
   renderTopicSummary();
   render();
-  renderCurrent();
 }
 
 // Moves the nearest thumb; when both are equally near, the first movement's direction decides.
@@ -443,44 +422,20 @@ async function openProblem(slug) {
   else await chrome.tabs.create({ url });
 }
 
-async function saveHistory() {
-  await chrome.storage.session.set({ history: state.history });
-  renderCurrent();
-}
-
-async function pick() {
-  const { list } = candidates();
-  const h = state.history;
-  const p = list && pickRandom(list, h.list[h.index]);
-  if (!p) return;
-  h.list = h.list.slice(0, h.index + 1);
-  h.list.push(p.slug);
-  h.index = h.list.length - 1;
-  await saveHistory();
-  await openProblem(p.slug);
-}
-
-async function step(delta) {
-  const h = state.history;
-  const i = h.index + delta;
-  if (i < 0 || i >= h.list.length) return;
-  h.index = i;
-  await saveHistory();
-  await openProblem(h.list[i]);
+function pick() {
+  const p = pickRandom(candidates().list ?? []);
+  if (p) openProblem(p.slug);
 }
 
 async function init() {
-  const [{ filters }, { history }] = await Promise.all([
-    chrome.storage.local.get('filters'),
-    chrome.storage.session.get('history'),
-  ]);
+  // Caches written by earlier versions.
+  chrome.storage.local.remove(['problems', 'companyCounts']);
+  const { filters } = await chrome.storage.local.get('filters');
   state.filters = { ...DEFAULT_FILTERS, ...filters };
-  if (history) state.history = history;
   buildRatingScale();
   writeForm(state.filters);
   renderTopicSummary();
   render();
-  renderCurrent();
 
   form.addEventListener('submit', (e) => e.preventDefault());
   form.addEventListener('input', onRatingInput);
@@ -493,31 +448,24 @@ async function init() {
     onChange();
   });
   $('pick').addEventListener('click', pick);
-  $('prev').addEventListener('click', () => step(-1));
-  $('next').addEventListener('click', () => step(1));
-  $('current').addEventListener('click', (e) => {
-    e.preventDefault();
-    openProblem(state.history.list[state.history.index]);
-  });
 
   getProblems()
     .then(
       ({ problems, tags }) => {
         state.problems = problems;
         state.tagNames = tags;
-        state.bySlug = new Map(problems.map((p) => [p.slug, p]));
         buildTopics(tags);
       },
       (e) => { state.problems = new Error(`Could not load the problem list (${e.message}).`); },
     )
-    .then(() => { renderTopicSummary(); render(); renderCurrent(); });
+    .then(() => { renderTopicSummary(); render(); });
 
   getRatings()
     .then(
       (r) => { state.ratings = r; },
       (e) => { state.ratings = new Error(`Could not load ratings (${e.message}).`); },
     )
-    .then(() => { render(); renderCurrent(); });
+    .then(() => { render(); });
 
   if (state.filters.status !== 'any') ensureSolved();
   if (state.filters.company) loadCompany();
