@@ -105,9 +105,7 @@ export function getCompanyProblems(company, period) {
   });
 }
 
-// Uses the user's leetcode.com session. Chrome treats requests to hosts the extension
-// has permission for as same-site, so the session cookie is sent unless third-party
-// cookies are blocked. Returns null when LeetCode does not see a signed-in user.
+// Sends the leetcode.com session cookie (not if third-party cookies are blocked); null when signed out.
 export async function getSolved() {
   const { solved: entry } = await chrome.storage.local.get('solved');
   if (entry && Date.now() - entry.at < STATUS_TTL) return entry.data;

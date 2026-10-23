@@ -16,8 +16,7 @@ const DEFAULT_FILTERS = {
 const $ = (id) => document.getElementById(id);
 const form = $('filters');
 
-// Each data field is undefined while loading, an Error if loading failed, else the data.
-// solved is null when leetcode.com reports no signed-in user.
+// Data fields: undefined while loading, Error if it failed, else the data; solved is null when signed out.
 const state = {
   filters: DEFAULT_FILTERS,
   history: { list: [], index: -1 },

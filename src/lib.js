@@ -31,8 +31,7 @@ export function slugsFromCompanyCsv(text) {
     .filter(Boolean);
 }
 
-// ctx.ratings: slug -> rating; ctx.solved: slug -> 'ac' | 'notac';
-// ctx.company: Set of slugs, or null for no company filter.
+// ctx: ratings slug -> rating, solved slug -> 'ac' | 'notac', company Set of slugs or null.
 export function filterProblems(problems, f, { ratings, solved, company }) {
   const tags = new Set(f.tags);
   const ranged = f.ratingMin != null || f.ratingMax != null;
