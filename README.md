@@ -16,7 +16,7 @@ The topic and company lists are limited to common interview topics and large com
 - Companies: [liquidslr/leetcode-company-wise-problems](https://github.com/liquidslr/leetcode-company-wise-problems), fetched per company, cached 24 h. It has no license, so nothing is bundled.
 
 Permissions: `storage`, plus `https://leetcode.com/*` for the problem list, solve status and reusing an open LeetCode tab.
-No server and no analytics; data stays in `chrome.storage`.
+No server and no analytics; data stays in `chrome.storage`. See [PRIVACY.md](PRIVACY.md).
 
 ## Development
 
