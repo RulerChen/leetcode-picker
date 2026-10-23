@@ -85,7 +85,7 @@ function renderLevels() {
   const { list } = candidates({ ...state.filters, difficulty: LEVELS });
   for (const level of LEVELS) {
     const n = list?.filter((p) => p.difficulty === level).length;
-    form.querySelector(`b[data-level="${level}"]`).textContent = n ?? '…';
+    form.querySelector(`b[data-level="${level}"]`).textContent = n == null ? '…' : `${n} problems`;
   }
 }
 
@@ -116,7 +116,7 @@ function renderCurrent() {
   const rating = loaded(state.ratings)?.[slug];
   el.href = `${LC}/problems/${slug}/`;
   const badge = el.querySelector('.badge');
-  badge.hidden = rating == null;
+  badge.hidden = rating == null || state.filters.mode !== 'rating';
   badge.textContent = rating ?? '';
   el.querySelector('.title').textContent = p ? `${p.id}. ${p.title}` : slug;
   const meta = el.querySelector('.meta');
@@ -352,6 +352,7 @@ function onChange() {
   if (state.filters.company !== prev.company || state.filters.period !== prev.period) loadCompany();
   renderTopicSummary();
   render();
+  renderCurrent();
 }
 
 // Moves the nearest thumb; when both are equally near, the first movement's direction decides.

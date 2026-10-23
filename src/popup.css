@@ -184,9 +184,9 @@ button, input, select, summary { font: inherit; color: inherit; }
   transition: transform 140ms var(--ease-out), border-color 120ms ease, background-color 120ms ease;
 }
 .level input { position: absolute; opacity: 0; pointer-events: none; }
-.level .name { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 550; }
-.level i { width: 8px; height: 8px; border-radius: 50%; background: var(--d); opacity: 0.35; }
-.level b { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.level .name { display: flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 650; }
+.level i { width: 9px; height: 9px; border-radius: 50%; background: var(--d); opacity: 0.35; }
+.level b { color: var(--muted); font-size: 11.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .level:has(:checked) {
   color: var(--fg);
   border-color: color-mix(in srgb, var(--d) 55%, transparent);
