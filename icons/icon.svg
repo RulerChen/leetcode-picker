@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <polygon points="64,8 112.5,36 112.5,92 64,120 15.5,92 15.5,36" fill="#1E293B" stroke="#1E293B" stroke-width="8" stroke-linejoin="round"/>
+  <g transform="matrix(0.485 0.28 -0.485 0.28 64 8)">
+    <rect x="7" y="7" width="86" height="86" rx="14" fill="#34D399"/>
+    <circle cx="50" cy="50" r="12" fill="#1E293B"/>
+  </g>
+  <g transform="matrix(0.485 0.28 0 0.56 15.5 36)">
+    <rect x="7" y="7" width="86" height="86" rx="14" fill="#FBBF24"/>
+    <circle cx="28" cy="28" r="11" fill="#1E293B"/>
+    <circle cx="72" cy="72" r="11" fill="#1E293B"/>
+  </g>
+  <g transform="matrix(0.485 -0.28 0 0.56 64 64)">
+    <rect x="7" y="7" width="86" height="86" rx="14" fill="#F43F5E"/>
+    <circle cx="27" cy="27" r="11" fill="#1E293B"/>
+    <circle cx="50" cy="50" r="11" fill="#1E293B"/>
+    <circle cx="73" cy="73" r="11" fill="#1E293B"/>
+  </g>
+</svg>

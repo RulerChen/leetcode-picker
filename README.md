@@ -18,6 +18,7 @@ No server and no analytics; data stays in `chrome.storage`.
 ## Development
 
 Load the repo root as an unpacked extension at `chrome://extensions`.
+`icons/*.png` are rendered from `icons/icon.svg` at 16, 32, 48 and 128 px.
 
 ```sh
 npm test       # unit tests
