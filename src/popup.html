@@ -7,14 +7,18 @@
   <script type="module" src="popup.js"></script>
 </head>
 <body>
-  <header class="top">
-    <img src="../icons/48.png" alt="" width="22" height="22">
-    <h1>LeetCode Picker</h1>
-  </header>
-
   <form id="filters">
-    <section class="rating">
-      <div class="rating-head">
+    <header class="top">
+      <img src="../icons/48.png" alt="" width="22" height="22">
+      <h1>LeetCode Picker</h1>
+      <div class="mode" role="radiogroup" aria-label="Search by">
+        <label><input type="radio" name="mode" value="rating">Rating</label>
+        <label><input type="radio" name="mode" value="difficulty">Difficulty</label>
+      </div>
+    </header>
+
+    <section class="panel rating-panel">
+      <div class="panel-head">
         <span class="eyebrow">Rating</span>
         <output id="ratingLabel"></output>
       </div>
@@ -25,28 +29,44 @@
         <input type="range" name="ratingMax" min="1000" max="3200" step="50" aria-label="Maximum rating">
       </div>
       <div class="ticks" id="ticks" aria-hidden="true"></div>
-      <label class="check"><input type="checkbox" name="includeUnrated"> Include problems without a contest rating</label>
+    </section>
+
+    <section class="panel difficulty-panel">
+      <div class="panel-head"><span class="eyebrow">Difficulty</span></div>
+      <div class="levels">
+        <label class="level" style="--d: var(--easy)">
+          <input type="checkbox" name="difficulty" value="Easy">
+          <span class="name"><i></i>Easy</span><b data-level="Easy"></b>
+        </label>
+        <label class="level" style="--d: var(--medium)">
+          <input type="checkbox" name="difficulty" value="Medium">
+          <span class="name"><i></i>Medium</span><b data-level="Medium"></b>
+        </label>
+        <label class="level" style="--d: var(--hard)">
+          <input type="checkbox" name="difficulty" value="Hard">
+          <span class="name"><i></i>Hard</span><b data-level="Hard"></b>
+        </label>
+      </div>
     </section>
 
     <section class="more">
-      <span class="label">Difficulty</span>
-      <div class="controls">
-        <label class="pill" style="--d: var(--easy)"><input type="checkbox" name="difficulty" value="Easy"><i></i>Easy</label>
-        <label class="pill" style="--d: var(--medium)"><input type="checkbox" name="difficulty" value="Medium"><i></i>Medium</label>
-        <label class="pill" style="--d: var(--hard)"><input type="checkbox" name="difficulty" value="Hard"><i></i>Hard</label>
-      </div>
-
       <span class="label">Topics</span>
       <details id="topics">
         <summary id="topicSummary" class="field">Any</summary>
-        <div id="topicList"></div>
-        <button type="button" id="clearTopics" class="link">Clear topics</button>
+        <div class="drop">
+          <input type="search" id="topicSearch" class="field" placeholder="Search topics" autocomplete="off" aria-label="Search topics">
+          <div id="topicList"></div>
+          <button type="button" id="clearTopics" class="link">Clear topics</button>
+        </div>
       </details>
 
       <span class="label">Company</span>
       <div class="controls">
-        <input name="company" class="field grow" list="companyList" placeholder="Any" autocomplete="off" aria-label="Company">
-        <datalist id="companyList"></datalist>
+        <div class="combo grow">
+          <input name="company" class="field" placeholder="Any" autocomplete="off" spellcheck="false"
+                 role="combobox" aria-label="Company" aria-expanded="false" aria-controls="companyMenu" aria-autocomplete="list">
+          <ul id="companyMenu" class="menu" role="listbox" hidden></ul>
+        </div>
         <select name="period" class="field" aria-label="Asked within">
           <option value="30d">30 days</option>
           <option value="3m">3 months</option>

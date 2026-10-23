@@ -31,20 +31,19 @@ export function slugsFromCompanyCsv(text) {
     .filter(Boolean);
 }
 
-// ctx: ratings slug -> rating, solved slug -> 'ac' | 'notac', company Set of slugs or null.
+// f.mode is 'rating' (rated problems in range) or 'difficulty'; ctx maps slugs to rating / 'ac' | 'notac', company is a Set or null.
 export function filterProblems(problems, f, { ratings, solved, company }) {
   const tags = new Set(f.tags);
   return problems.filter((p) => {
-    if (!f.difficulty.includes(p.difficulty)) return false;
+    if (f.mode === 'difficulty') {
+      if (!f.difficulty.includes(p.difficulty)) return false;
+    } else {
+      const r = ratings[p.slug];
+      if (r == null || (f.ratingMin != null && r < f.ratingMin) || (f.ratingMax != null && r > f.ratingMax)) return false;
+    }
     if (p.paid && !f.paid) return false;
     if (tags.size && !p.tags.some((t) => tags.has(t))) return false;
     if (company && !company.has(p.slug)) return false;
-    const r = ratings[p.slug];
-    if (r == null) {
-      if (!f.includeUnrated) return false;
-    } else if ((f.ratingMin != null && r < f.ratingMin) || (f.ratingMax != null && r > f.ratingMax)) {
-      return false;
-    }
     if (f.status !== 'any') {
       const s = solved[p.slug] ?? 'todo';
       if (f.status === 'unsolved' ? s === 'ac' : s !== f.status) return false;

@@ -29,10 +29,10 @@ const problems = [
   P('e', 'Hard', ['math']),
 ];
 const base = {
+  mode: 'difficulty',
   difficulty: ['Easy', 'Medium', 'Hard'],
   ratingMin: null,
   ratingMax: null,
-  includeUnrated: true,
   tags: [],
   status: 'any',
   paid: false,
@@ -49,12 +49,14 @@ test('filterProblems: topics match any selected tag', () => {
   assert.deepEqual(run({ tags: ['dp', 'graph'], paid: true }), ['b', 'c', 'd']);
 });
 
-test('filterProblems: rating range and unrated problems', () => {
-  assert.deepEqual(run({ ratingMin: 1500, ratingMax: 2000, includeUnrated: false }), ['b']);
-  assert.deepEqual(run({ ratingMin: 1500, includeUnrated: false }), ['b', 'c']);
-  assert.deepEqual(run({ ratingMin: 1500 }), ['b', 'c', 'e']);
-  // Without a range, unrated problems still need includeUnrated.
-  assert.deepEqual(run({ includeUnrated: false }), ['a', 'b', 'c']);
+test('filterProblems: rating mode ignores difficulty and needs a rating', () => {
+  assert.deepEqual(run({ mode: 'rating', ratingMin: 1500, ratingMax: 2000 }), ['b']);
+  assert.deepEqual(run({ mode: 'rating', ratingMin: 1500, difficulty: ['Easy'] }), ['b', 'c']);
+  assert.deepEqual(run({ mode: 'rating' }), ['a', 'b', 'c']);
+});
+
+test('filterProblems: difficulty mode ignores rating and keeps unrated problems', () => {
+  assert.deepEqual(run({ difficulty: ['Hard'], ratingMin: 2500 }), ['c', 'e']);
 });
 
 test('histogram buckets rated problems and clamps outliers to the edges', () => {
