@@ -3,10 +3,10 @@
 Chrome extension that picks a random LeetCode problem.
 
 <div align="center">
- <img src="store/screenshot-1-rating.png" width="60%" alt="Pick by contest rating">
+ <img src="store/screenshot-1-rating.png" width="75%" alt="Pick by contest rating">
 </div>
 <div align="center">
-  <img src="store/screenshot-2-company.png" width="60%" alt="Pick by difficulty and company">
+  <img src="store/screenshot-2-company.png" width="75%" alt="Pick by difficulty and company">
 </div>
 
 ## Features
