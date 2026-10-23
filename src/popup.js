@@ -1,5 +1,5 @@
 import { filterProblems, histogram, pickRandom } from './lib.js';
-import { LC, getProblems, getRatings, getCompanies, getCompanyProblems, getSolved } from './data.js';
+import { LC, getProblems, getRatings, getCompanies, getCompanyProblems, getSolved, getPremium } from './data.js';
 
 const RATING_LO = 1000;
 const RATING_HI = 3200;
@@ -32,7 +32,6 @@ const DEFAULT_FILTERS = {
   companies: [],
   period: 'all',
   status: 'any',
-  paid: false,
   minLikes: 0,
 };
 
@@ -47,6 +46,7 @@ const state = {
   ratings: undefined,
   company: undefined,
   solved: undefined,
+  premium: false,
 };
 
 const loaded = (v) => (v === undefined || v instanceof Error ? null : v);
@@ -66,7 +66,7 @@ function candidates(f = state.filters) {
         (state.solved === null && 'Sign in to leetcode.com to filter by solve status.'))) ||
     (f.companies.length && blocker(state.company, 'company problems'));
   if (block) return { block };
-  const list = filterProblems(state.problems, f, {
+  const list = filterProblems(state.problems, { ...f, paid: state.premium }, {
     ratings: loaded(state.ratings) ?? {},
     solved: loaded(state.solved) ?? {},
     company: f.companies.length ? state.company : null,
@@ -196,7 +196,6 @@ function readForm() {
     companies: fd.getAll('company'),
     period: fd.get('period'),
     status: fd.get('status'),
-    paid: fd.has('paid'),
     minLikes: Number(fd.get('minLikes')),
   };
 }
@@ -207,9 +206,8 @@ function writeForm(f) {
     if (el.name === 'ratingMin') el.value = f.ratingMin ?? RATING_LO;
     else if (el.name === 'ratingMax') el.value = f.ratingMax ?? RATING_HI;
     else if (el.type === 'radio') el.checked = String(f[el.name]) === el.value;
-    else if (el.type === 'checkbox') {
-      el.checked = el.name === 'difficulty' ? f.difficulty.includes(el.value) : Boolean(f[el.name]);
-    } else el.value = f[el.name] ?? '';
+    else if (el.type === 'checkbox') el.checked = f.difficulty.includes(el.value);
+    else el.value = f[el.name] ?? '';
   }
 }
 
@@ -390,6 +388,9 @@ async function init() {
       (e) => { state.ratings = new Error(`Could not load ratings (${e.message}).`); },
     )
     .then(() => { render(); });
+
+  // Paid-only problems are listed only for a Premium account; a failed check counts as no Premium.
+  getPremium().then((v) => { state.premium = v; render(); }, () => {});
 
   if (state.filters.status !== 'any') ensureSolved();
   if (state.filters.companies.length) loadCompany();

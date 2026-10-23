@@ -104,6 +104,15 @@ export function getCompanyProblems(company, period) {
   });
 }
 
+// Sends the session cookie like getSolved; a GET stays clear of LeetCode's CSRF check. False when signed out.
+export function getPremium() {
+  return cached('premium', STATUS_TTL, async () => {
+    const query = encodeURIComponent('query{userStatus{isPremium}}');
+    const body = await (await fetchOk(`${LC}/graphql?query=${query}`, { credentials: 'include' })).json();
+    return body.data?.userStatus?.isPremium === true;
+  });
+}
+
 // Sends the leetcode.com session cookie (not if third-party cookies are blocked); null when signed out.
 export async function getSolved() {
   const { solved: entry } = await chrome.storage.local.get('solved');

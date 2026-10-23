@@ -242,9 +242,6 @@ button, input, select, summary { font: inherit; color: inherit; }
 .field::placeholder { color: var(--muted); }
 input.field { width: 100%; }
 
-.check { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; cursor: pointer; white-space: nowrap; }
-.check input { margin: 0; accent-color: var(--accent); }
-
 /* Native selects, styled with customizable select */
 select.field, ::picker(select) { appearance: base-select; }
 select.field { display: flex; align-items: center; gap: 6px; cursor: pointer; }
