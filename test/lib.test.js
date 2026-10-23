@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCsv, slugsFromCompanyCsv, filterProblems, pickRandom } from '../src/lib.js';
+import { parseCsv, slugsFromCompanyCsv, filterProblems, histogram, pickRandom } from '../src/lib.js';
 
 test('parseCsv handles quoted commas, escaped quotes and CRLF', () => {
   const text = 'a,b,c\r\n1,"x, y","say ""hi"""\r\n2,,"multi\nline"\n';
@@ -32,7 +32,7 @@ const base = {
   difficulty: ['Easy', 'Medium', 'Hard'],
   ratingMin: null,
   ratingMax: null,
-  includeUnrated: false,
+  includeUnrated: true,
   tags: [],
   status: 'any',
   paid: false,
@@ -50,11 +50,17 @@ test('filterProblems: topics match any selected tag', () => {
 });
 
 test('filterProblems: rating range and unrated problems', () => {
-  assert.deepEqual(run({ ratingMin: 1500, ratingMax: 2000 }), ['b']);
-  assert.deepEqual(run({ ratingMin: 1500 }), ['b', 'c']);
-  assert.deepEqual(run({ ratingMin: 1500, includeUnrated: true }), ['b', 'c', 'e']);
-  // includeUnrated alone does not restrict anything.
-  assert.deepEqual(run({ includeUnrated: true }), ['a', 'b', 'c', 'e']);
+  assert.deepEqual(run({ ratingMin: 1500, ratingMax: 2000, includeUnrated: false }), ['b']);
+  assert.deepEqual(run({ ratingMin: 1500, includeUnrated: false }), ['b', 'c']);
+  assert.deepEqual(run({ ratingMin: 1500 }), ['b', 'c', 'e']);
+  // Without a range, unrated problems still need includeUnrated.
+  assert.deepEqual(run({ includeUnrated: false }), ['a', 'b', 'c']);
+});
+
+test('histogram buckets rated problems and clamps outliers to the edges', () => {
+  const ratings = { a: 1200, b: 1700, c: 2300, x: 900, y: 3500 };
+  const list = [...problems, P('x', 'Easy'), P('y', 'Hard')];
+  assert.deepEqual(histogram(list, ratings, 1000, 3200, 500), [2, 1, 1, 0, 1]);
 });
 
 test('filterProblems: solve status', () => {

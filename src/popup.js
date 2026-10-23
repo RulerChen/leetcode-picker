@@ -1,9 +1,13 @@
-import { filterProblems, pickRandom } from './lib.js';
+import { filterProblems, histogram, pickRandom } from './lib.js';
 import { LC, getProblems, getRatings, getCompanies, getCompanyProblems, getSolved } from './data.js';
+
+const RATING_LO = 1000;
+const RATING_HI = 3200;
+const BUCKET = 100;
 
 const DEFAULT_FILTERS = {
   difficulty: ['Easy', 'Medium', 'Hard'],
-  ratingMin: null,
+  ratingMin: 1500,
   ratingMax: null,
   includeUnrated: false,
   tags: [],
@@ -30,34 +34,70 @@ const state = {
 
 const loaded = (v) => (v === undefined || v instanceof Error ? null : v);
 
+// Green at the low end of the scale, amber in the middle, rose at the top.
+function ratingColor(r) {
+  const t = Math.min(1, Math.max(0, (r - RATING_LO) / (RATING_HI - RATING_LO)));
+  const hue = t < 0.5 ? 142 - 208 * t : 38 - 96 * (t - 0.5);
+  return `hsl(${(hue + 360) % 360} 72% 46%)`;
+}
+
 function blocker(value, what) {
   if (value === undefined) return `Loading ${what}…`;
   if (value instanceof Error) return value.message;
   return null;
 }
 
-function candidates() {
-  const f = state.filters;
-  const ranged = f.ratingMin != null || f.ratingMax != null;
+function candidates(f = state.filters) {
   const block =
     blocker(state.problems, 'problem list') ||
-    (ranged && blocker(state.ratings, 'ratings')) ||
+    blocker(state.ratings, 'ratings') ||
     (f.status !== 'any' &&
       (blocker(state.solved, 'solve status') ||
         (state.solved === null && 'Sign in to leetcode.com to filter by solve status.'))) ||
     (f.company && blocker(state.company, `${f.company} problems`));
   if (block) return { block };
   const list = filterProblems(state.problems, f, {
-    ratings: loaded(state.ratings) ?? {},
+    ratings: state.ratings,
     solved: loaded(state.solved) ?? {},
     company: f.company ? state.company : null,
   });
   return { list };
 }
 
+function renderRating() {
+  const f = state.filters;
+  const lo = f.ratingMin ?? RATING_LO;
+  const hi = f.ratingMax ?? RATING_HI;
+  const range = $('range');
+  range.style.setProperty('--lo', (lo - RATING_LO) / (RATING_HI - RATING_LO));
+  range.style.setProperty('--hi', (hi - RATING_LO) / (RATING_HI - RATING_LO));
+  form.elements.ratingMin.classList.toggle('top', lo > (RATING_LO + RATING_HI) / 2);
+  $('ratingLabel').textContent = `${lo} – ${f.ratingMax == null ? `${RATING_HI}+` : hi}`;
+
+  const { list } = candidates({ ...f, ratingMin: null, ratingMax: null, includeUnrated: false });
+  const bars = $('hist').children;
+  const counts = list ? histogram(list, state.ratings, RATING_LO, RATING_HI, BUCKET) : [];
+  const peak = Math.max(1, ...counts);
+  for (let i = 0; i < bars.length; i++) {
+    const from = RATING_LO + i * BUCKET;
+    const n = counts[i] ?? 0;
+    bars[i].style.transform = `scaleY(${Math.max(0.04, n / peak)})`;
+    bars[i].classList.toggle('in', from + BUCKET > lo && (f.ratingMax == null || from <= hi));
+    bars[i].title = `${from}–${from + BUCKET - 1}: ${n}`;
+  }
+}
+
 function render() {
+  renderRating();
   const { block, list } = candidates();
-  $('count').textContent = block ?? `${list.length} problem${list.length === 1 ? '' : 's'} match`;
+  const count = $('count');
+  if (block) {
+    count.textContent = block;
+  } else {
+    const n = document.createElement('strong');
+    n.textContent = list.length;
+    count.replaceChildren(n, ` problem${list.length === 1 ? '' : 's'} match`);
+  }
   $('pick').disabled = Boolean(block) || list.length === 0;
 }
 
@@ -72,6 +112,12 @@ function renderCurrent() {
   const p = state.bySlug.get(slug);
   const rating = loaded(state.ratings)?.[slug];
   el.href = `${LC}/problems/${slug}/`;
+  const badge = el.querySelector('.badge');
+  badge.hidden = rating == null;
+  if (rating != null) {
+    badge.textContent = rating;
+    badge.style.background = ratingColor(rating);
+  }
   el.querySelector('.title').textContent = p ? `${p.id}. ${p.title}` : slug;
   const meta = el.querySelector('.meta');
   meta.replaceChildren();
@@ -81,7 +127,6 @@ function renderCurrent() {
     d.textContent = p.difficulty;
     meta.append(d, ' · ');
   }
-  if (rating) meta.append(`rating ${rating} · `);
   meta.append(`${h.index + 1} / ${h.list.length}`);
 }
 
@@ -107,13 +152,33 @@ function buildTopics(tagNames) {
   $('topicList').replaceChildren(...labels);
 }
 
+function buildRatingScale() {
+  const pct = (v) => `${((v - RATING_LO) / (RATING_HI - RATING_LO)) * 100}%`;
+  const ticks = [];
+  for (let v = RATING_LO; v < RATING_HI; v += 500) {
+    const t = document.createElement('span');
+    t.style.left = pct(v);
+    t.textContent = v;
+    ticks.push(t);
+  }
+  $('ticks').replaceChildren(...ticks);
+  const bars = [];
+  for (let from = RATING_LO; from < RATING_HI; from += BUCKET) {
+    const bar = document.createElement('span');
+    bar.style.setProperty('--c', ratingColor(from + BUCKET / 2));
+    bars.push(bar);
+  }
+  $('hist').replaceChildren(...bars);
+}
+
 function readForm() {
   const fd = new FormData(form);
-  const num = (k) => (fd.get(k) === '' ? null : Number(fd.get(k)));
+  const min = Number(fd.get('ratingMin'));
+  const max = Number(fd.get('ratingMax'));
   return {
     difficulty: fd.getAll('difficulty'),
-    ratingMin: num('ratingMin'),
-    ratingMax: num('ratingMax'),
+    ratingMin: min <= RATING_LO ? null : min,
+    ratingMax: max >= RATING_HI ? null : max,
     includeUnrated: fd.has('includeUnrated'),
     tags: fd.getAll('tag'),
     company: fd.get('company').trim(),
@@ -126,11 +191,11 @@ function readForm() {
 function writeForm(f) {
   for (const el of form.elements) {
     if (!el.name || el.name === 'tag') continue;
-    if (el.type === 'checkbox') {
+    if (el.name === 'ratingMin') el.value = f.ratingMin ?? RATING_LO;
+    else if (el.name === 'ratingMax') el.value = f.ratingMax ?? RATING_HI;
+    else if (el.type === 'checkbox') {
       el.checked = el.name === 'difficulty' ? f.difficulty.includes(el.value) : Boolean(f[el.name]);
-    } else {
-      el.value = f[el.name] ?? '';
-    }
+    } else el.value = f[el.name] ?? '';
   }
 }
 
@@ -189,6 +254,18 @@ function onChange() {
   render();
 }
 
+// Live feedback while dragging; the change event that follows saves the filters.
+function onRatingInput(e) {
+  if (e.target.type !== 'range') return;
+  const { ratingMin: min, ratingMax: max } = form.elements;
+  if (Number(min.value) > Number(max.value)) {
+    if (e.target === min) min.value = max.value;
+    else max.value = min.value;
+  }
+  state.filters = readForm();
+  render();
+}
+
 async function openProblem(slug) {
   const url = `${LC}/problems/${slug}/`;
   // tab.url is only visible for hosts we have permission for, i.e. leetcode.com.
@@ -230,11 +307,13 @@ async function init() {
   ]);
   state.filters = { ...DEFAULT_FILTERS, ...filters };
   if (history) state.history = history;
+  buildRatingScale();
   writeForm(state.filters);
   renderTopicSummary();
   render();
   renderCurrent();
 
+  form.addEventListener('input', onRatingInput);
   form.addEventListener('change', onChange);
   $('clearTopics').addEventListener('click', () => {
     for (const el of $('topicList').querySelectorAll('input')) el.checked = false;

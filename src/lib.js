@@ -34,19 +34,16 @@ export function slugsFromCompanyCsv(text) {
 // ctx: ratings slug -> rating, solved slug -> 'ac' | 'notac', company Set of slugs or null.
 export function filterProblems(problems, f, { ratings, solved, company }) {
   const tags = new Set(f.tags);
-  const ranged = f.ratingMin != null || f.ratingMax != null;
   return problems.filter((p) => {
     if (!f.difficulty.includes(p.difficulty)) return false;
     if (p.paid && !f.paid) return false;
     if (tags.size && !p.tags.some((t) => tags.has(t))) return false;
     if (company && !company.has(p.slug)) return false;
-    if (ranged) {
-      const r = ratings[p.slug];
-      if (r == null) {
-        if (!f.includeUnrated) return false;
-      } else if ((f.ratingMin != null && r < f.ratingMin) || (f.ratingMax != null && r > f.ratingMax)) {
-        return false;
-      }
+    const r = ratings[p.slug];
+    if (r == null) {
+      if (!f.includeUnrated) return false;
+    } else if ((f.ratingMin != null && r < f.ratingMin) || (f.ratingMax != null && r > f.ratingMax)) {
+      return false;
     }
     if (f.status !== 'any') {
       const s = solved[p.slug] ?? 'todo';
@@ -54,6 +51,16 @@ export function filterProblems(problems, f, { ratings, solved, company }) {
     }
     return true;
   });
+}
+
+// Rated problems per `step`-wide bucket from `lo`; out-of-range ratings land in the edge buckets.
+export function histogram(problems, ratings, lo, hi, step) {
+  const counts = new Array(Math.ceil((hi - lo) / step)).fill(0);
+  for (const p of problems) {
+    const r = ratings[p.slug];
+    if (r != null) counts[Math.min(counts.length - 1, Math.max(0, Math.floor((r - lo) / step)))]++;
+  }
+  return counts;
 }
 
 // Avoid handing back the problem the user is already looking at.

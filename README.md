@@ -2,7 +2,8 @@
 
 Unofficial Chrome extension that opens a random LeetCode problem from the toolbar popup.
 
-Filters: difficulty, contest rating, topics (match any), company and time window, your solve status, paid-only.
+Rating comes first: drag a contest-rating range (default 1500+) over a histogram of matching problems.
+Other filters: difficulty, topics (match any), company and time window, your solve status, paid-only.
 ◀ / ▶ step through the problems picked this browser session.
 
 ## Data
