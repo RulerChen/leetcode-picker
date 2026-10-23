@@ -4,9 +4,9 @@ Unofficial Chrome extension that opens a random LeetCode problem from the toolba
 
 Search by rating or by difficulty, one at a time. Rating (default) is a contest-rating range, 1500+ to start,
 over a histogram of matching problems; only contest problems have one.
-Other filters: searchable topics (match any), company and time window, your solve status, paid-only,
-and minimum likes (1k+, 3k+, 5k+) for well-known problems; newer contest problems have fewer likes.
-The topic and company lists are limited to common interview topics and large companies; any company can still be typed in full.
+Other filters: searchable topics and companies (each matches any selected), a time window for companies,
+your solve status, paid-only, and minimum likes (1k+, 3k+, 5k+) for well-known problems; newer contest problems have fewer likes.
+The topic list leaves out contest-only tags such as network flow or suffix automaton; every company in the dataset is listed.
 
 ## Data
 

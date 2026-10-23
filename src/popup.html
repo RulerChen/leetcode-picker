@@ -53,21 +53,22 @@
 
     <section class="more">
       <span class="label">Topics</span>
-      <div class="topics">
+      <div class="picker topics">
         <button type="button" id="topicSummary" class="field trigger" popovertarget="topicDrop">Any</button>
         <div id="topicDrop" class="pop drop" popover>
-          <input type="search" id="topicSearch" class="field" placeholder="Search topics" autocomplete="off" aria-label="Search topics" autofocus>
-          <div id="topicList"></div>
-          <button type="button" id="clearTopics" class="link">Clear topics</button>
+          <input type="search" class="field" placeholder="Search topics" autocomplete="off" aria-label="Search topics" autofocus>
+          <div id="topicList" class="chips"></div>
+          <button type="button" class="link">Clear topics</button>
         </div>
       </div>
 
       <span class="label">Company</span>
-      <div class="controls">
-        <div class="combo grow">
-          <input name="company" class="field" placeholder="Any" autocomplete="off" spellcheck="false"
-                 role="combobox" aria-label="Company" aria-expanded="false" aria-controls="companyMenu" aria-autocomplete="list">
-          <ul id="companyMenu" class="pop menu" role="listbox" popover="manual"></ul>
+      <div class="controls picker companies">
+        <button type="button" id="companySummary" class="field trigger grow" popovertarget="companyDrop">Any</button>
+        <div id="companyDrop" class="pop drop" popover>
+          <input type="search" class="field" placeholder="Search companies" autocomplete="off" aria-label="Search companies" autofocus>
+          <div id="companyList" class="chips"></div>
+          <button type="button" class="link">Clear companies</button>
         </div>
         <select name="period" class="field" aria-label="Asked within">
           <option value="30d">30 days</option>
