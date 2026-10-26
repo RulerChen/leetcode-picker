@@ -23,6 +23,10 @@ You can install the extension from the [Chrome Web Store](https://chromewebstore
 - Pick by contest rating range or by difficulty.
 - Filter by topic, company, solve status and minimum likes.
 
+## Release
+
+Push a tag such as `v0.1.1`. The [Release workflow](.github/workflows/release.yml) runs the tests, sets the manifest `version` from the tag and attaches `leetcode-picker.zip` to a GitHub release. Upload that zip to the Chrome Web Store by hand.
+
 ## Data
 
 Ratings from [zerotrac/leetcode_problem_rating](https://github.com/zerotrac/leetcode_problem_rating)  
