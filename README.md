@@ -25,7 +25,7 @@ You can install the extension from the [Chrome Web Store](https://chromewebstore
 
 ## Release
 
-Bump `version` in `manifest.json`, commit, then push a matching tag such as `v0.1.1`. The [Release workflow](.github/workflows/release.yml) checks the tag against the manifest, runs the tests and attaches `leetcode-picker.zip` to a GitHub release. Upload that zip to the Chrome Web Store by hand.
+Push a tag such as `v0.1.1`. The [Release workflow](.github/workflows/release.yml) runs the tests, sets the manifest `version` from the tag and attaches `leetcode-picker.zip` to a GitHub release. Upload that zip to the Chrome Web Store by hand.
 
 ## Data
 
