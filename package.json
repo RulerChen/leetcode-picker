@@ -3,6 +3,6 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "pack": "rm -f leetcode-picker.zip && zip -r leetcode-picker.zip manifest.json src icons"
+    "pack": "rm -f leetcode-picker.zip && zip -r leetcode-picker.zip manifest.json src icons -x icons/icon.svg"
   }
 }
