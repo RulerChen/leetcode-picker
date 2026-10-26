@@ -23,6 +23,10 @@ You can install the extension from the [Chrome Web Store](https://chromewebstore
 - Pick by contest rating range or by difficulty.
 - Filter by topic, company, solve status and minimum likes.
 
+## Release
+
+Bump `version` in `manifest.json`, commit, then push a matching tag such as `v0.1.1`. The [Release workflow](.github/workflows/release.yml) runs the tests, attaches the zip to a GitHub release and publishes it to the Chrome Web Store. It needs the repo variables `CWS_PUBLISHER_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_SERVICE_ACCOUNT`.
+
 ## Data
 
 Ratings from [zerotrac/leetcode_problem_rating](https://github.com/zerotrac/leetcode_problem_rating)  

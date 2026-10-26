@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Check tag matches manifest version
+        run: |
+          version=$(jq -r .version manifest.json)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match manifest version $version"
+            exit 1
+          fi
+      - run: npm test
+      - run: npm run pack
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" leetcode-picker.zip --verify-tag --generate-notes
+
+  publish:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ITEM: publishers/${{ vars.CWS_PUBLISHER_ID }}/items/jgineokpngglkppkedpbmglfhblhehgf
+    steps:
+      - name: Download release zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern leetcode-picker.zip
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+      - name: Upload and publish to Chrome Web Store
+        env:
+          TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          api() { curl -sS --fail-with-body -H "Authorization: Bearer $TOKEN" "$@" | tee /dev/stderr; }
+          state=$(api -X POST -T leetcode-picker.zip "https://chromewebstore.googleapis.com/upload/v2/$ITEM:upload" | jq -r .uploadState)
+          # Upload may finish asynchronously, so poll fetchStatus until it settles.
+          for _ in $(seq 30); do
+            case "$state" in
+              SUCCEEDED) break ;;
+              *IN_PROGRESS) sleep 10 ;;
+              *) echo "::error::Upload state $state"; exit 1 ;;
+            esac
+            state=$(api "https://chromewebstore.googleapis.com/v2/$ITEM:fetchStatus" | jq -r .lastAsyncUploadState)
+          done
+          [ "$state" = SUCCEEDED ] || { echo "::error::Upload still $state"; exit 1; }
+          api -X POST --json '{}' "https://chromewebstore.googleapis.com/v2/$ITEM:publish" > /dev/null
